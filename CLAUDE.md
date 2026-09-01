@@ -49,8 +49,9 @@ standard and legal in this market — dozens of competitors exist.
   different" section and a hero tab, not as the main value prop.
 
 ## Current prototype state
-A working single-file HTML/CSS/JS prototype exists (`landit.html`,
-attached to this project). Honest status of each feature:
+A single-file frontend (`landit.html`) plus one serverless backend endpoint
+(`api/interview.js`, for the AI interview) exist in this project. Honest
+status of each feature:
 
 | Feature | Status |
 |---|---|
@@ -58,7 +59,7 @@ attached to this project). Honest status of each feature:
 | PDF download | **Fully functional**, via browser print (`window.print()` + `@media print` CSS that isolates the resume). No backend needed for this — works as-is once deployed. |
 | ATS score | **Fake/demo only.** Hardcoded score (82) with a nice animation, but does not analyze the actual resume content. Needs a real scoring approach (heuristic or AI-based). |
 | Keyword targeting | **Fake/demo only.** Chips are hardcoded regardless of what's pasted in the job description box. Needs real text comparison logic. |
-| AI mock interview | **Fake/demo only.** The chat is a scripted mockup — no real AI, no input, no real scoring. Needs real integration (e.g. Claude API) plus likely speech input/output. |
+| AI mock interview | **Real text chat, wired to Claude.** `api/interview.js` (Vercel serverless function) holds the Anthropic API key server-side and returns the interviewer's next question plus live clarity/structure/specificity/confidence scores as JSON; the frontend chat log and score bars in `landit.html` are driven by real responses, not scripted ones. Requires `ANTHROPIC_API_KEY` to be set in the deployment's environment variables to actually respond (see README) — without it, the UI shows a clear "needs to be deployed with a key" error instead of failing silently. Voice input/output is not built yet — text only. |
 | Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
 | User accounts / auth | **Not built.** |
@@ -67,7 +68,9 @@ attached to this project). Honest status of each feature:
 
 ## Suggested build priority (as discussed, subject to the owner's input)
 1. ✅ Resume builder + PDF export — done, real, working.
-2. AI mock interview — real integration (this is the key differentiator).
+2. ✅ AI mock interview (text) — real Claude API integration built (see
+   `api/interview.js`). Remaining: deploy with an API key, and voice
+   input/output is a possible later enhancement, not required for launch.
 3. Auth + Stripe subscription (trial → annual) — the monetization engine.
 4. Real ATS scoring + keyword targeting logic.
 5. Real job search data.
