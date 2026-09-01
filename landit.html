@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LandIt — Build a resume that lands the job</title>
+<meta name="description" content="LandIt writes, scores, and tailors your resume for every application, then runs you through a real AI mock interview so you walk in ready. Free 7-day trial, no credit card needed.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LandIt">
+<meta property="og:title" content="LandIt — Build a resume that lands the job">
+<meta property="og:description" content="LandIt writes, scores, and tailors your resume for every application, then runs you through a real AI mock interview so you walk in ready.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LandIt — Build a resume that lands the job">
+<meta name="twitter:description" content="LandIt writes, scores, and tailors your resume for every application, then runs you through a real AI mock interview so you walk in ready.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%23FAF7F2'/%3E%3Cpath d='M3 19C7 13 12 6 22 4' stroke='%231F9E5E' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='0.5 4.5' fill='none'/%3E%3Cpath d='M22 4L17 5.5M22 4L20.5 9' stroke='%231F9E5E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='3' cy='19' r='3' fill='%23F5A623'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -198,12 +207,15 @@
 
   /* ---- Print / PDF export ---- */
   @media print{
-    body *{visibility:hidden;}
-    #resume-preview, #resume-preview *{visibility:visible;}
+    body{background:#fff !important;}
+    body > *{display:none !important;}
+    #builder{display:block !important; padding:0 !important; background:#fff !important; border:none !important;}
+    #builder .wrap{padding:0 !important; max-width:none !important;}
+    #builder .section-head, #builder-form{display:none !important;}
+    #builder .builder-grid{display:block !important;}
     #resume-preview{
-      position:absolute; top:0; left:0; width:100%;
-      border:none; box-shadow:none; padding:0.4in;
-      font-size:12pt;
+      display:block !important; border:none; box-shadow:none; border-radius:0;
+      padding:0.4in; font-size:12pt;
     }
     #resume-preview .lname{font-size:22pt;}
     @page{ margin:0; size:auto; }
@@ -441,29 +453,25 @@
     </div>
     <div class="ai-grid">
       <div class="ai-chat">
-        <div class="msg ai">
-          <div class="avatar">AI</div>
-          <div class="bubble">Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline.</div>
-        </div>
-        <div class="msg user">
-          <div class="avatar">You</div>
-          <div class="bubble">At Northwind, we had three weeks to launch a repositioning before a competitor's announcement. I cut the plan down to the two channels that mattered and briefed the team daily instead of weekly.</div>
-        </div>
-        <div class="msg ai">
-          <div class="avatar">AI</div>
-          <div class="bubble">
-            Good structure — I can hear the constraint and the decision clearly.
-            <div class="typing-dots" style="margin-top:6px;"><span></span><span></span><span></span></div>
+        <div id="ai-chat-log">
+          <div class="msg ai">
+            <div class="avatar">AI</div>
+            <div class="bubble">Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline.</div>
           </div>
         </div>
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+          <textarea id="ai-answer" placeholder="Type your answer…" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
+          <button type="button" class="btn btn-primary btn-sm" id="ai-send-btn" onclick="sendInterviewAnswer()">Send</button>
+        </div>
+        <p id="ai-error" style="display:none; font-size:12.5px; color:var(--clay); margin-top:-8px;"></p>
       </div>
       <div class="ai-feedback">
         <h3>Live scoring</h3>
-        <div class="fb-row"><span class="lbl">Clarity</span><div class="bar-track"><div class="bar-fill" style="width:88%; background:var(--forest);"></div></div><span class="pct">88%</span></div>
-        <div class="fb-row"><span class="lbl">Structure</span><div class="bar-track"><div class="bar-fill" style="width:82%; background:var(--teal);"></div></div><span class="pct">82%</span></div>
-        <div class="fb-row"><span class="lbl">Specificity</span><div class="bar-track"><div class="bar-fill" style="width:64%; background:var(--clay);"></div></div><span class="pct">64%</span></div>
-        <div class="fb-row"><span class="lbl">Confidence</span><div class="bar-track"><div class="bar-fill" style="width:91%; background:var(--plum);"></div></div><span class="pct">91%</span></div>
-        <div class="fb-note"><b>Tip:</b> add one number to the result — "cut the timeline by 30%" lands harder than "launched successfully."</div>
+        <div class="fb-row"><span class="lbl">Clarity</span><div class="bar-track"><div class="bar-fill" id="fb-clarity-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="fb-clarity-pct">—</span></div>
+        <div class="fb-row"><span class="lbl">Structure</span><div class="bar-track"><div class="bar-fill" id="fb-structure-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="fb-structure-pct">—</span></div>
+        <div class="fb-row"><span class="lbl">Specificity</span><div class="bar-track"><div class="bar-fill" id="fb-specificity-bar" style="width:0%; background:var(--clay);"></div></div><span class="pct" id="fb-specificity-pct">—</span></div>
+        <div class="fb-row"><span class="lbl">Confidence</span><div class="bar-track"><div class="bar-fill" id="fb-confidence-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="fb-confidence-pct">—</span></div>
+        <div class="fb-note" id="fb-tip"><b>Tip:</b> Answer the question on the left to get real, live feedback here.</div>
       </div>
     </div>
   </div>
@@ -904,6 +912,112 @@
 
   // Start with one experience entry pre-added
   addExperience();
+</script>
+
+<script>
+  // ---- AI mock interview: real chat wired to /api/interview ----
+  let interviewHistory = [
+    { role: 'ai', content: "Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline." }
+  ];
+  let interviewBusy = false;
+
+  function appendChatMessage(role, text){
+    const log = document.getElementById('ai-chat-log');
+    const div = document.createElement('div');
+    div.className = 'msg ' + (role === 'ai' ? 'ai' : 'user');
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'ai' ? 'AI' : 'You';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function appendTypingIndicator(){
+    const log = document.getElementById('ai-chat-log');
+    const div = document.createElement('div');
+    div.className = 'msg ai';
+    div.id = 'typing-' + Date.now();
+    div.innerHTML = '<div class="avatar">AI</div><div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div.id;
+  }
+
+  function removeTypingIndicator(id){
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  function updateInterviewScores(scores){
+    if (!scores) return;
+    ['clarity','structure','specificity','confidence'].forEach(key => {
+      const val = scores[key];
+      if (typeof val !== 'number') return;
+      const bar = document.getElementById('fb-' + key + '-bar');
+      const pct = document.getElementById('fb-' + key + '-pct');
+      if (bar) bar.style.width = val + '%';
+      if (pct) pct.textContent = Math.round(val) + '%';
+    });
+  }
+
+  async function sendInterviewAnswer(){
+    if (interviewBusy) return;
+    const ta = document.getElementById('ai-answer');
+    const text = ta.value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('ai-send-btn');
+    const errEl = document.getElementById('ai-error');
+    errEl.style.display = 'none';
+
+    appendChatMessage('user', text);
+    interviewHistory.push({ role: 'user', content: text });
+    ta.value = '';
+    interviewBusy = true;
+    btn.disabled = true;
+    ta.disabled = true;
+
+    const typingId = appendTypingIndicator();
+
+    try {
+      const response = await fetch('/api/interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history: interviewHistory })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || ('Request failed (' + response.status + ')'));
+
+      removeTypingIndicator(typingId);
+      appendChatMessage('ai', data.reply);
+      interviewHistory.push({ role: 'ai', content: data.reply });
+      updateInterviewScores(data.scores);
+      if (data.tip) {
+        document.getElementById('fb-tip').innerHTML = '<b>Tip:</b> ' + escapeHtml(data.tip);
+      }
+    } catch (err) {
+      removeTypingIndicator(typingId);
+      errEl.textContent = 'Could not reach the AI interviewer (' + err.message + '). This feature needs to be deployed with an ANTHROPIC_API_KEY configured.';
+      errEl.style.display = 'block';
+    } finally {
+      interviewBusy = false;
+      btn.disabled = false;
+      ta.disabled = false;
+      ta.focus();
+    }
+  }
+
+  document.getElementById('ai-answer').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendInterviewAnswer();
+    }
+  });
 </script>
 
 </body>
