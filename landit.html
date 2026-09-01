@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LandIt — Build a resume that lands the job</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #1B2430;
+    --ink-soft: #4C5A6B;
+    --paper: #FAF7F2;
+    --paper-raised: #FFFFFF;
+    --line: #E4DED2;
+    --forest: #1F9E5E;
+    --forest-deep: #147A47;
+    --forest-tint: #DFF7EA;
+    --amber: #F5A623;
+    --amber-tint: #FDEBC8;
+    --clay: #E85A3B;
+    --clay-tint: #FCE0D6;
+    --plum: #9B4FC2;
+    --plum-tint: #F3E4FA;
+    --teal: #17A2B8;
+    --teal-tint: #D9F3F7;
+    --red-soft: #E5533F;
+    --radius-s: 6px;
+    --radius-m: 10px;
+    --radius-l: 20px;
+    --shadow: 0 1px 2px rgba(27,36,48,0.06), 0 8px 24px rgba(27,36,48,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    color:var(--ink);
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  p{margin:0;}
+  a{color:inherit;}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 32px;}
+  @media (max-width:640px){.wrap{padding:0 20px;}}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(250,247,242,0.9);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 0;
+  }
+  .logo{display:flex; align-items:center; gap:10px; font-family:'Fraunces',serif; font-weight:600; font-size:21px;}
+  .logo svg{flex-shrink:0;}
+  .navlinks{display:flex; align-items:center; gap:32px; font-size:15px; font-weight:500; color:var(--ink-soft);}
+  .navlinks a{text-decoration:none; transition:color .15s;}
+  .navlinks a:hover{color:var(--ink);}
+  .navcta{display:flex; align-items:center; gap:18px;}
+  @media (max-width:820px){.navlinks{display:none;}}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:11px 22px; border-radius:999px; font-weight:600; font-size:15px;
+    border:1px solid transparent; cursor:pointer; text-decoration:none;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    font-family:'Inter',sans-serif;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--forest); color:#fff;}
+  .btn-primary:hover{background:var(--forest-deep);}
+  .btn-ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  .btn-ghost:hover{border-color:var(--ink-soft);}
+  .btn-sm{padding:8px 16px; font-size:13.5px;}
+
+  /* ---------- Hero ---------- */
+  .hero{padding:76px 0 40px; position:relative; overflow:hidden;}
+  .hero-grid{display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; align-items:center;}
+  @media (max-width:900px){.hero-grid{grid-template-columns:1fr; gap:40px;}}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    color:var(--forest-deep); background:var(--forest-tint);
+    padding:6px 14px; border-radius:999px; font-size:13.5px; font-weight:600;
+    margin-bottom:22px;
+  }
+  .hero h1{font-size:52px; line-height:1.06;}
+  @media (max-width:640px){.hero h1{font-size:36px;}}
+  .hero-sub{margin-top:20px; font-size:18px; color:var(--ink-soft); max-width:460px;}
+  .hero-actions{display:flex; align-items:center; gap:18px; margin-top:32px; flex-wrap:wrap;}
+  .hero-note{font-size:13.5px; color:var(--ink-soft);}
+  .flightpath{position:absolute; top:40px; right:-40px; width:340px; opacity:.55; pointer-events:none;}
+  @media (max-width:900px){.flightpath{display:none;}}
+
+  .hero-tabbar{display:flex; gap:4px; background:var(--paper); border-radius:10px; padding:4px; width:100%;}
+  .htab{
+    flex:1; border:none; background:transparent; padding:8px 0; border-radius:7px;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:var(--ink-soft);
+    cursor:pointer; transition:all .15s;
+  }
+  .htab.active{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(27,36,48,0.1);}
+  .hero-pane{display:none; margin-top:20px; min-height:190px;}
+  .hero-pane.active{display:block; animation:fadein .25s ease;}
+
+  /* live preview mock card */
+  .preview-card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius-l);
+    box-shadow:var(--shadow); padding:28px; position:relative;
+  }
+  .preview-topline{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .dot-row{display:flex; gap:6px;}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--line);}
+  .score-chip{display:flex; align-items:center; gap:6px; background:var(--forest-tint); color:var(--forest-deep); font-weight:700; font-size:13px; padding:5px 12px; border-radius:999px;}
+  .resume-mini{border:1px solid var(--line); border-radius:var(--radius-m); padding:22px; background:#fff;}
+  .resume-mini .rname{font-family:'Fraunces',serif; font-size:20px; font-weight:600;}
+  .resume-mini .rrole{color:var(--teal); font-size:13.5px; font-weight:600; margin-top:2px;}
+  .resume-mini .rline{height:8px; background:var(--line); border-radius:4px; margin-top:14px;}
+  .resume-mini .rline.w1{width:100%;}
+  .resume-mini .rline.w2{width:88%;}
+  .resume-mini .rline.w3{width:65%;}
+  .resume-mini .rsection{margin-top:20px; font-size:11.5px; letter-spacing:.04em; color:var(--ink-soft); font-weight:700;}
+
+  /* ---------- Logos strip ---------- */
+  .logostrip{padding:34px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .logostrip .label{text-align:center; font-size:13px; color:var(--ink-soft); margin-bottom:20px;}
+  .logo-row{display:flex; justify-content:center; gap:52px; flex-wrap:wrap; opacity:.55; font-weight:700; font-family:'Fraunces',serif; font-size:19px; color:var(--ink-soft);}
+
+  /* ---------- Section shell ---------- */
+  section{padding:88px 0;}
+  .section-head{max-width:600px; margin-bottom:48px;}
+  .section-head .kicker{font-weight:700; font-size:13.5px; margin-bottom:10px; display:block; letter-spacing:.02em;}
+  .section-head h2{font-size:36px; line-height:1.15;}
+  .section-head p{margin-top:14px; font-size:17px; color:var(--ink-soft);}
+
+  /* ---------- Feature tabs (interactive) ---------- */
+  .tabbar{display:flex; gap:8px; margin-bottom:36px; flex-wrap:wrap;}
+  .tab{
+    padding:10px 18px; border-radius:999px; border:1px solid var(--line); background:#fff;
+    font-weight:600; font-size:14.5px; cursor:pointer; color:var(--ink-soft);
+    transition:all .15s;
+  }
+  .tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .panel{display:none;}
+  .panel.active{display:block; animation:fadein .25s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  /* Builder panel */
+  .builder-grid{display:grid; grid-template-columns:1fr 1fr; gap:36px;}
+  @media (max-width:860px){.builder-grid{grid-template-columns:1fr;}}
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:28px; box-shadow:var(--shadow);}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
+  .field input, .field textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s);
+    font-family:'Inter',sans-serif; font-size:14.5px; color:var(--ink); background:var(--paper);
+  }
+  .field textarea{resize:vertical; min-height:76px;}
+  .field input:focus, .field textarea:focus{outline:2px solid var(--ink-soft); outline-offset:1px;}
+
+  .live-resume{padding:30px;}
+  .live-resume .lname{font-family:'Fraunces',serif; font-size:24px; font-weight:600; min-height:30px;}
+  .live-resume .lrole{color:var(--teal); font-weight:600; font-size:14px; margin-top:2px; min-height:18px;}
+  .live-resume .lsummary{margin-top:14px; font-size:14px; color:var(--ink-soft); min-height:40px;}
+  .live-resume hr{border:none; border-top:1px solid var(--line); margin:20px 0;}
+  .live-resume .lsection{font-size:11.5px; font-weight:700; letter-spacing:.05em; color:var(--ink-soft); margin-bottom:10px;}
+  .live-resume .lexp{font-size:14px; font-weight:600; min-height:18px;}
+  .live-resume .lexp-sub{font-size:12.5px; color:var(--ink-soft); margin-top:1px; min-height:16px;}
+
+  .field-divider{font-size:11.5px; font-weight:700; letter-spacing:.05em; color:var(--ink-soft); margin:22px 0 12px; padding-top:16px; border-top:1px solid var(--line);}
+  .field-divider:first-of-type{border-top:none; padding-top:0;}
+  .exp-entry{border:1px solid var(--line); border-radius:var(--radius-m); padding:16px; margin-bottom:12px; position:relative; background:var(--paper);}
+  .exp-entry .remove-exp{position:absolute; top:12px; right:12px; background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600;}
+  .exp-entry .remove-exp:hover{color:var(--clay);}
+  .exp-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:480px){.exp-row{grid-template-columns:1fr;}}
+
+  .live-resume .lcontact{font-size:12.5px; color:var(--ink-soft); margin-top:6px; min-height:16px;}
+  .lexp-block{margin-bottom:14px;}
+  .lexp-block .lexp-top{display:flex; justify-content:space-between; gap:10px; font-weight:600; font-size:14px;}
+  .lexp-block .lexp-dates{font-size:12.5px; color:var(--ink-soft); white-space:nowrap;}
+  .lexp-block .lexp-company{font-size:13px; color:var(--ink-soft); margin-top:1px;}
+  .lexp-block .lexp-bullets{margin:6px 0 0; padding-left:18px; font-size:13px; color:var(--ink-soft);}
+  .lexp-block .lexp-bullets li{margin-bottom:3px;}
+  .lexp-empty{font-size:13px; color:var(--ink-soft); font-style:italic;}
+  .skill-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .skill-tags span{background:var(--paper); border:1px solid var(--line); padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; color:var(--ink-soft);}
+
+  /* ---- Print / PDF export ---- */
+  @media print{
+    body *{visibility:hidden;}
+    #resume-preview, #resume-preview *{visibility:visible;}
+    #resume-preview{
+      position:absolute; top:0; left:0; width:100%;
+      border:none; box-shadow:none; padding:0.4in;
+      font-size:12pt;
+    }
+    #resume-preview .lname{font-size:22pt;}
+    @page{ margin:0; size:auto; }
+  }
+
+  /* Score panel */
+  .score-grid{display:grid; grid-template-columns:220px 1fr; gap:44px; align-items:center;}
+  @media (max-width:760px){.score-grid{grid-template-columns:1fr; justify-items:center;}}
+  .ring-wrap{position:relative; width:200px; height:200px;}
+  .ring-num{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .ring-num .n{font-family:'Fraunces',serif; font-size:44px; font-weight:600;}
+  .ring-num .l{font-size:12.5px; color:var(--ink-soft); font-weight:600;}
+  .breakdown{display:flex; flex-direction:column; gap:16px;}
+  .bd-row{display:grid; grid-template-columns:120px 1fr 40px; align-items:center; gap:14px;}
+  .bd-row .lbl{font-size:14px; font-weight:600;}
+  .bar-track{height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--forest); border-radius:4px; transition:width .5s ease;}
+  .bd-row .pct{font-size:13px; font-weight:700; color:var(--ink-soft); text-align:right;}
+
+  /* Keyword targeting panel */
+  .kw-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;}
+  .chip{padding:6px 13px; border-radius:999px; font-size:13px; font-weight:600;}
+  .chip.matched{background:var(--forest-tint); color:var(--forest-deep);}
+  .chip.missing{background:var(--amber-tint); color:#8A5A16;}
+
+  /* Interview practice */
+  .qa-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:20px;}
+  @media (max-width:760px){.qa-grid{grid-template-columns:1fr;}}
+  .flipcard{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-m); padding:22px;
+    cursor:pointer; transition:box-shadow .15s;
+  }
+  .flipcard:hover{box-shadow:var(--shadow);}
+  .flipcard .q{font-weight:600; font-size:15px;}
+  .flipcard .a{margin-top:10px; font-size:13.5px; color:var(--ink-soft); display:none;}
+  .flipcard.open .a{display:block;}
+  .flipcard .hint{font-size:12px; color:var(--forest); font-weight:600; margin-top:10px;}
+
+  /* Job search */
+  .job-list{display:flex; flex-direction:column; gap:14px;}
+  .job-row{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-m); padding:18px 22px;
+    flex-wrap:wrap;
+  }
+  .job-info .jtitle{font-weight:600; font-size:15.5px;}
+  .job-info .jmeta{font-size:13px; color:var(--ink-soft); margin-top:3px;}
+  .job-tags{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .jtag{background:var(--paper); border:1px solid var(--line); padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; color:var(--ink-soft);}
+  .match-pill{font-weight:700; font-size:13px; color:var(--forest-deep); background:var(--forest-tint); padding:6px 12px; border-radius:999px; white-space:nowrap;}
+
+  /* AI Interview mock */
+  .ai-badge{display:inline-flex; align-items:center; gap:7px; background:var(--plum); color:#fff; font-size:12.5px; font-weight:700; padding:5px 12px; border-radius:999px; margin-bottom:14px;}
+  .ai-badge svg{flex-shrink:0;}
+  .ai-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:36px; align-items:stretch;}
+  @media (max-width:860px){.ai-grid{grid-template-columns:1fr;}}
+  .ai-chat{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:26px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:16px;}
+  .msg{display:flex; gap:12px; max-width:88%;}
+  .msg .avatar{width:32px; height:32px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff;}
+  .msg.ai .avatar{background:var(--teal);}
+  .msg.user .avatar{background:var(--ink-soft);}
+  .msg .bubble{background:var(--paper); border-radius:var(--radius-m); padding:12px 15px; font-size:14px; line-height:1.5;}
+  .msg.ai .bubble{background:var(--teal-tint); color:var(--teal);}
+  .msg.user{margin-left:auto; flex-direction:row-reverse;}
+  .msg.user .bubble{background:var(--paper);}
+  .typing-dots{display:inline-flex; gap:4px; padding:2px 0;}
+  .typing-dots span{width:6px; height:6px; border-radius:50%; background:var(--teal); opacity:.5; animation:blink 1.2s infinite;}
+  .typing-dots span:nth-child(2){animation-delay:.2s;} .typing-dots span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;} 40%{opacity:.9;}}
+
+  .ai-feedback{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:26px; box-shadow:var(--shadow);}
+  .ai-feedback h3{font-size:16px; margin-bottom:18px;}
+  .fb-row{display:grid; grid-template-columns:100px 1fr 38px; align-items:center; gap:12px; margin-bottom:14px;}
+  .fb-row .lbl{font-size:13.5px; font-weight:600;}
+  .fb-row .pct{font-size:12.5px; font-weight:700; color:var(--ink-soft); text-align:right;}
+  .fb-note{margin-top:18px; padding-top:18px; border-top:1px solid var(--line); font-size:13px; color:var(--ink-soft);}
+  .fb-note b{color:var(--ink);}
+
+  /* ---------- Templates strip ---------- */
+  .tmpl-row{display:grid; grid-template-columns:repeat(4,1fr); gap:20px;}
+  @media (max-width:820px){.tmpl-row{grid-template-columns:repeat(2,1fr);}}
+  .tmpl-card{border:1px solid var(--line); border-radius:var(--radius-m); overflow:hidden; background:#fff;}
+  .tmpl-swatch{height:150px; padding:16px; background:var(--paper);}
+  .tmpl-swatch .sline{height:6px; background:var(--line); border-radius:3px; margin-bottom:6px;}
+  .tmpl-name{padding:12px 16px; font-weight:600; font-size:14px; border-top:1px solid var(--line);}
+
+  /* ---------- Pricing ---------- */
+  .price-grid{display:grid; grid-template-columns:1fr 1fr; gap:28px; max-width:760px; margin:0 auto;}
+  @media (max-width:700px){.price-grid{grid-template-columns:1fr;}}
+  .price-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:34px; text-align:left;}
+  .price-card.highlight{border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-tint);}
+  .price-tag{display:inline-block; background:var(--amber-tint); color:#8A5A16; font-size:12px; font-weight:700; padding:4px 11px; border-radius:999px; margin-bottom:14px;}
+  .price-num{font-family:'Fraunces',serif; font-size:40px; font-weight:600; margin-top:6px;}
+  .price-num span{font-size:16px; font-weight:500; color:var(--ink-soft);}
+  .price-list{list-style:none; padding:0; margin:22px 0 26px; display:flex; flex-direction:column; gap:10px;}
+  .price-list li{font-size:14.5px; color:var(--ink-soft); display:flex; gap:9px; align-items:flex-start;}
+  .price-list li svg{flex-shrink:0; margin-top:2px;}
+
+  /* ---------- Footer CTA ---------- */
+  .cta-band{background:var(--ink); border-radius:var(--radius-l); padding:64px 48px; text-align:center; margin:0 32px;}
+  @media (max-width:640px){.cta-band{padding:44px 26px; margin:0 20px;}}
+  .cta-band h2{color:#fff; font-size:34px;}
+  .cta-band p{color:#B9C2CC; margin-top:12px; font-size:16px;}
+  .cta-band .hero-actions{justify-content:center; margin-top:28px;}
+
+  footer{padding:48px 0 32px; color:var(--ink-soft); font-size:13.5px;}
+  .foot-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-top:1px solid var(--line); padding-top:28px; margin-top:56px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="logo">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+        <path d="M3 19C7 13 12 6 22 4" stroke="#1F9E5E" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.5 4.5"/>
+        <path d="M22 4L17 5.5M22 4L20.5 9" stroke="#1F9E5E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="3" cy="19" r="3" fill="#F5A623"/>
+      </svg>
+      LandIt
+    </div>
+    <nav class="navlinks">
+      <a href="#ai-interview">AI Interview</a>
+      <a href="#builder">Resume Builder</a>
+      <a href="#score">ATS Score</a>
+      <a href="#jobs">Job Search</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <div class="navcta">
+      <a class="btn btn-ghost btn-sm" href="#">Log in</a>
+      <a class="btn btn-primary btn-sm" href="#pricing">Start free trial</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">✦ Now with live AI mock interviews</span>
+      <h1>Write the resume that<br>actually lands the job.</h1>
+      <p class="hero-sub">LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#pricing">Start your 7-day free trial</a>
+        <a class="btn btn-ghost" href="#ai-interview">Try an AI interview</a>
+      </div>
+      <p class="hero-note">No credit card needed to try it. Cancel anytime during your trial.</p>
+    </div>
+    <div class="preview-card">
+      <div class="preview-topline">
+        <div class="hero-tabbar">
+          <button class="htab active" data-pane="build" onclick="heroTab(this,'build')">Build</button>
+          <button class="htab" data-pane="score" onclick="heroTab(this,'score')">Score</button>
+          <button class="htab" data-pane="target" onclick="heroTab(this,'target')">Target</button>
+          <button class="htab" data-pane="practice" onclick="heroTab(this,'practice')">Practice</button>
+        </div>
+      </div>
+
+      <div class="hero-pane active" id="pane-build">
+        <div class="resume-mini">
+          <div class="rname">Alicia Moreno</div>
+          <div class="rrole">Product Marketing Manager</div>
+          <div class="rline w1"></div>
+          <div class="rline w2"></div>
+          <div class="rsection">EXPERIENCE</div>
+          <div class="rline w1"></div>
+          <div class="rline w3"></div>
+          <div class="rsection">SKILLS</div>
+          <div class="rline w2"></div>
+        </div>
+      </div>
+
+      <div class="hero-pane" id="pane-score">
+        <div style="display:flex; align-items:center; gap:24px;">
+          <div class="ring-wrap" style="width:130px; height:130px;">
+            <svg width="130" height="130" viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="86" fill="none" stroke="#E4DED2" stroke-width="16"/>
+              <circle class="score-ring" id="hero-ring" data-score="82" cx="100" cy="100" r="86" fill="none" stroke="#1F9E5E" stroke-width="16"
+                stroke-linecap="round" stroke-dasharray="540" stroke-dashoffset="540"
+                transform="rotate(-90 100 100)"/>
+            </svg>
+            <div class="ring-num"><span class="n" id="hero-ring-num" style="font-size:30px;">0</span><span class="l" id="hero-ring-label" style="font-size:11px;">—</span></div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;">Content</span><div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--forest);"></div></div><span class="pct" style="font-size:11.5px;">90%</span></div>
+            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;">Keywords</span><div class="bar-track"><div class="bar-fill" style="width:58%; background:var(--amber);"></div></div><span class="pct" style="font-size:11.5px;">58%</span></div>
+            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;">Impact</span><div class="bar-track"><div class="bar-fill" style="width:74%; background:var(--teal);"></div></div><span class="pct" style="font-size:11.5px;">74%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-pane" id="pane-target">
+        <p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Matched against: <b style="color:var(--ink);">Product Marketing Manager, Northwind</b></p>
+        <div class="kw-chips" style="margin-top:0;">
+          <span class="chip matched">✓ Go-to-market strategy</span>
+          <span class="chip matched">✓ Cross-functional</span>
+          <span class="chip missing">+ Positioning</span>
+          <span class="chip missing">+ Sprint planning</span>
+        </div>
+      </div>
+
+      <div class="hero-pane" id="pane-practice">
+        <div class="msg ai" style="max-width:100%;">
+          <div class="avatar" style="width:26px;height:26px;font-size:11px;">AI</div>
+          <div class="bubble" style="font-size:13px;">Tell me about a time you launched something under a tight deadline.</div>
+        </div>
+        <div class="msg user" style="max-width:100%; margin-top:12px;">
+          <div class="avatar" style="width:26px;height:26px;font-size:11px;">You</div>
+          <div class="bubble" style="font-size:13px;">We had three weeks before a competitor's announcement, so I cut the plan to two channels and briefed the team daily.</div>
+        </div>
+        <div class="fb-row" style="grid-template-columns:70px 1fr 32px; margin-top:16px;"><span class="lbl" style="font-size:12px;">Clarity</span><div class="bar-track"><div class="bar-fill" style="width:88%"></div></div><span class="pct" style="font-size:11px;">88%</span></div>
+      </div>
+    </div>
+    <p style="text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:12px;">Click a tab above — this is what LandIt actually looks like.</p>
+  </div>
+</section>
+
+<div class="logostrip">
+  <div class="wrap">
+    <p class="label">Job seekers using LandIt have gone on to interview at companies like</p>
+    <div class="logo-row">
+      <span>Meridian</span><span>Northwind</span><span>Halcyon</span><span>Arclight</span><span>Fenwick&nbsp;&amp;&nbsp;Co.</span>
+    </div>
+  </div>
+</div>
+
+<section id="ai-interview" style="padding-bottom:88px;">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="ai-badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="white"/></svg>
+        WHAT MAKES LANDIT DIFFERENT
+      </span>
+      <h2>Practice the interview, not just the resume.</h2>
+      <p>Most resume tools stop at the PDF. LandIt's AI interviewer asks you real questions out loud, listens to your answer, and scores it — so you know where you stand before a human ever does.</p>
+    </div>
+    <div class="ai-grid">
+      <div class="ai-chat">
+        <div class="msg ai">
+          <div class="avatar">AI</div>
+          <div class="bubble">Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline.</div>
+        </div>
+        <div class="msg user">
+          <div class="avatar">You</div>
+          <div class="bubble">At Northwind, we had three weeks to launch a repositioning before a competitor's announcement. I cut the plan down to the two channels that mattered and briefed the team daily instead of weekly.</div>
+        </div>
+        <div class="msg ai">
+          <div class="avatar">AI</div>
+          <div class="bubble">
+            Good structure — I can hear the constraint and the decision clearly.
+            <div class="typing-dots" style="margin-top:6px;"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ai-feedback">
+        <h3>Live scoring</h3>
+        <div class="fb-row"><span class="lbl">Clarity</span><div class="bar-track"><div class="bar-fill" style="width:88%; background:var(--forest);"></div></div><span class="pct">88%</span></div>
+        <div class="fb-row"><span class="lbl">Structure</span><div class="bar-track"><div class="bar-fill" style="width:82%; background:var(--teal);"></div></div><span class="pct">82%</span></div>
+        <div class="fb-row"><span class="lbl">Specificity</span><div class="bar-track"><div class="bar-fill" style="width:64%; background:var(--clay);"></div></div><span class="pct">64%</span></div>
+        <div class="fb-row"><span class="lbl">Confidence</span><div class="bar-track"><div class="bar-fill" style="width:91%; background:var(--plum);"></div></div><span class="pct">91%</span></div>
+        <div class="fb-note"><b>Tip:</b> add one number to the result — "cut the timeline by 30%" lands harder than "launched successfully."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="builder" style="background:var(--paper-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker" style="color:var(--plum);">RESUME BUILDER</span>
+      <h2>Type on the left, watch it land on the right.</h2>
+      <p>This one actually works — fill it in, then download a clean, ATS-friendly PDF. No account needed to try it.</p>
+    </div>
+    <div class="builder-grid">
+      <div class="card" id="builder-form">
+        <div class="field">
+          <label for="in-name">Full name</label>
+          <input id="in-name" type="text" placeholder="e.g. Alicia Moreno">
+        </div>
+        <div class="field">
+          <label for="in-role">Target role</label>
+          <input id="in-role" type="text" placeholder="e.g. Product Marketing Manager">
+        </div>
+        <div class="field">
+          <label for="in-contact">Contact line</label>
+          <input id="in-contact" type="text" placeholder="e.g. alicia@email.com · Seattle, WA · linkedin.com/in/alicia">
+        </div>
+        <div class="field">
+          <label for="in-summary">Professional summary</label>
+          <textarea id="in-summary" placeholder="A couple of sentences on what you do and what you're looking for next."></textarea>
+        </div>
+
+        <div class="field-divider">EXPERIENCE</div>
+        <div id="exp-list"></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addExperience()">+ Add another role</button>
+
+        <div class="field-divider">EDUCATION</div>
+        <div class="field">
+          <label for="in-edu">School &amp; degree</label>
+          <input id="in-edu" type="text" placeholder="e.g. B.S. Marketing, University of Washington, 2019">
+        </div>
+
+        <div class="field-divider">SKILLS</div>
+        <div class="field">
+          <label for="in-skills">Skills (comma separated)</label>
+          <input id="in-skills" type="text" placeholder="e.g. Go-to-market strategy, SQL, Figma, A/B testing">
+        </div>
+
+        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); downloadResumePDF();" style="width:100%; margin-top:22px;">Download as PDF</a>
+      </div>
+
+      <div class="card live-resume" id="resume-preview">
+        <div class="lname" id="out-name">Your name</div>
+        <div class="lrole" id="out-role">Target role</div>
+        <div class="lcontact" id="out-contact"></div>
+        <div class="lsummary" id="out-summary">Your summary will appear here as you type.</div>
+        <hr>
+        <div class="lsection">EXPERIENCE</div>
+        <div id="out-exp-list">
+          <div class="lexp-empty">Your roles will appear here.</div>
+        </div>
+        <hr id="edu-hr" style="display:none;">
+        <div class="lsection" id="edu-heading" style="display:none;">EDUCATION</div>
+        <div class="lexp-sub" id="out-edu"></div>
+        <hr id="skills-hr" style="display:none;">
+        <div class="lsection" id="skills-heading" style="display:none;">SKILLS</div>
+        <div id="out-skills" class="skill-tags"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="score" style="background:var(--paper-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker" style="color:var(--forest);">ATS SCORE</span>
+      <h2>Know exactly what's holding your resume back.</h2>
+      <p>Most resumes are filtered by software before a person ever sees them. LandIt scores yours the same way, section by section.</p>
+    </div>
+    <div class="card score-grid">
+      <div class="ring-wrap">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#E4DED2" stroke-width="14"/>
+          <circle class="score-ring" data-score="82" cx="100" cy="100" r="86" fill="none" stroke="#1F9E5E" stroke-width="14"
+            stroke-linecap="round" stroke-dasharray="540" stroke-dashoffset="540"
+            transform="rotate(-90 100 100)"/>
+        </svg>
+        <div class="ring-num">
+          <span class="n" id="main-ring-num">0</span>
+          <span class="l" id="main-ring-label">—</span>
+        </div>
+      </div>
+      <div class="breakdown">
+        <div class="bd-row"><span class="lbl">Content</span><div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--forest);"></div></div><span class="pct">90%</span></div>
+        <div class="bd-row"><span class="lbl">Impact</span><div class="bar-track"><div class="bar-fill" style="width:74%; background:var(--teal);"></div></div><span class="pct">74%</span></div>
+        <div class="bd-row"><span class="lbl">Keywords</span><div class="bar-track"><div class="bar-fill" style="width:58%; background:var(--amber);"></div></div><span class="pct">58%</span></div>
+        <div class="bd-row"><span class="lbl">Formatting</span><div class="bar-track"><div class="bar-fill" style="width:95%; background:var(--plum);"></div></div><span class="pct">95%</span></div>
+      </div>
+      <p style="grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); margin-top:-6px;">Ordered by how much each one weighs in a hiring manager's read — content first, formatting last. <a href="#" onclick="event.preventDefault(); replayMainRing();" style="color:var(--forest); font-weight:600;">Replay score animation ↻</a></p>
+    </div>
+  </div>
+</section>
+
+<section id="target">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker" style="color:var(--clay);">KEYWORD TARGETING</span>
+      <h2>Paste the job post. See what's missing.</h2>
+      <p>LandIt compares your resume against the listing and shows exactly which terms to add — no keyword stuffing required.</p>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label for="jd">Job description</label>
+        <textarea id="jd" style="min-height:100px" placeholder="Paste a job description to see matched and missing keywords…">We're looking for a Product Marketing Manager with experience in go-to-market strategy, positioning, sprint planning, and cross-functional collaboration with sales and design teams.</textarea>
+      </div>
+      <div class="kw-chips">
+        <span class="chip matched">✓ Go-to-market strategy</span>
+        <span class="chip matched">✓ Cross-functional collaboration</span>
+        <span class="chip missing">+ Positioning</span>
+        <span class="chip missing">+ Sprint planning</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="jobs">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker" style="color:var(--amber);">JOB SEARCH</span>
+      <h2>Open roles, matched to your resume.</h2>
+      <p>See how closely you fit before you apply — and tailor your resume for each one in one click.</p>
+    </div>
+    <div class="job-list">
+      <div class="job-row">
+        <div class="job-info">
+          <div class="jtitle">Senior Product Marketing Manager</div>
+          <div class="jmeta">Northwind Digital · Remote · Full-time</div>
+          <div class="job-tags"><span class="jtag" style="background:var(--plum-tint); color:var(--plum); border-color:transparent;">Go-to-market</span><span class="jtag" style="background:var(--teal-tint); color:var(--teal); border-color:transparent;">B2B SaaS</span><span class="jtag">5+ yrs</span></div>
+        </div>
+        <span class="match-pill">88% match</span>
+      </div>
+      <div class="job-row">
+        <div class="job-info">
+          <div class="jtitle">Marketing Lead</div>
+          <div class="jmeta">Arclight Studio · New York, NY · Full-time</div>
+          <div class="job-tags"><span class="jtag" style="background:var(--clay-tint); color:var(--clay); border-color:transparent;">Positioning</span><span class="jtag" style="background:var(--plum-tint); color:var(--plum); border-color:transparent;">Brand</span><span class="jtag">3+ yrs</span></div>
+        </div>
+        <span class="match-pill" style="background:var(--amber-tint); color:#8A5A16;">74% match</span>
+      </div>
+      <div class="job-row">
+        <div class="job-info">
+          <div class="jtitle">Growth Marketing Manager</div>
+          <div class="jmeta">Fenwick &amp; Co. · Hybrid · Full-time</div>
+          <div class="job-tags"><span class="jtag" style="background:var(--teal-tint); color:var(--teal); border-color:transparent;">Lifecycle</span><span class="jtag" style="background:var(--clay-tint); color:var(--clay); border-color:transparent;">Analytics</span><span class="jtag">4+ yrs</span></div>
+        </div>
+        <span class="match-pill" style="background:var(--clay-tint); color:var(--clay);">65% match</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--paper-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker" style="color:var(--ink-soft);">TEMPLATES</span>
+      <h2>Formats that pass the scan and the skim.</h2>
+      <p>Every template is built to parse cleanly through ATS software first, and read well to a human second.</p>
+    </div>
+    <div class="tmpl-row">
+      <div class="tmpl-card">
+        <div class="tmpl-swatch"><div class="sline" style="width:60%; background:var(--forest);"></div><div class="sline" style="width:40%"></div><div class="sline" style="width:90%; margin-top:14px;"></div><div class="sline" style="width:80%"></div></div>
+        <div class="tmpl-name">Clearline</div>
+      </div>
+      <div class="tmpl-card">
+        <div class="tmpl-swatch"><div class="sline" style="width:50%; background:var(--teal);"></div><div class="sline" style="width:30%"></div><div class="sline" style="width:95%; margin-top:14px;"></div><div class="sline" style="width:70%"></div></div>
+        <div class="tmpl-name">Fieldwork</div>
+      </div>
+      <div class="tmpl-card">
+        <div class="tmpl-swatch"><div class="sline" style="width:70%; background:var(--clay);"></div><div class="sline" style="width:45%"></div><div class="sline" style="width:85%; margin-top:14px;"></div><div class="sline" style="width:60%"></div></div>
+        <div class="tmpl-name">Groundwork</div>
+      </div>
+      <div class="tmpl-card">
+        <div class="tmpl-swatch"><div class="sline" style="width:55%; background:var(--plum);"></div><div class="sline" style="width:35%"></div><div class="sline" style="width:92%; margin-top:14px;"></div><div class="sline" style="width:75%"></div></div>
+        <div class="tmpl-name">Runway</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="section-head" style="margin-left:auto; margin-right:auto; text-align:center;">
+      <span class="kicker" style="color:var(--teal);">PRICING</span>
+      <h2>Try it free. Keep it if it works.</h2>
+      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, no card required. After that, one simple annual plan.</p>
+    </div>
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="price-tag">Free trial</div>
+        <div class="price-num">$0 <span>/ 7 days</span></div>
+        <ul class="price-list">
+          <li>✓ Unlimited resume edits</li>
+          <li>✓ Full ATS score breakdown</li>
+          <li>✓ 1 keyword-targeted resume</li>
+          <li>✓ 2 interview practice sessions</li>
+        </ul>
+        <a class="btn btn-ghost" href="#" style="width:100%;">Start free trial</a>
+      </div>
+      <div class="price-card highlight">
+        <div class="price-tag">Most popular</div>
+        <div class="price-num">$89 <span>/ year</span></div>
+        <ul class="price-list">
+          <li>✓ Everything in the free trial</li>
+          <li>✓ Unlimited tailored resumes</li>
+          <li>✓ Unlimited interview practice</li>
+          <li>✓ Full job search &amp; match scoring</li>
+          <li>✓ All templates, unlimited downloads</li>
+        </ul>
+        <a class="btn btn-primary" href="#" style="width:100%;">Continue to LandIt Pro</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-band">
+  <h2>Your next job is one resume away.</h2>
+  <p>Start free. No card, no pressure — just seven days to see if it lands.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="#pricing" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <div class="logo" style="font-size:17px;">LandIt</div>
+      <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <a href="#ai-interview">AI Interview</a>
+        <a href="#builder">Resume Builder</a>
+        <a href="#jobs">Job Search</a>
+        <a href="#pricing">Pricing</a>
+      </div>
+      <div>© LandIt. All rights reserved.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const CIRCUMFERENCE = 540;
+
+  // low score = warm/urgent (clay-red), high score = cool/calm (green)
+  function scoreColor(score){
+    const hue = (score / 100) * 145; // 0 -> red-orange, 100 -> green
+    return `hsl(${hue}, 72%, 42%)`;
+  }
+  function scoreLabel(score){
+    if (score >= 80) return 'Strong';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Needs work';
+    return 'Weak';
+  }
+
+  function animateRing(ringEl, numEl, labelEl, target, duration){
+    duration = duration || 1700;
+    const start = performance.now();
+    function frame(now){
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      const value = eased * target;
+      const offset = CIRCUMFERENCE - (CIRCUMFERENCE * value / 100);
+      ringEl.setAttribute('stroke-dashoffset', offset);
+      ringEl.setAttribute('stroke', scoreColor(value));
+      if (numEl) numEl.textContent = Math.round(value);
+      if (labelEl) labelEl.textContent = scoreLabel(value);
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  const mainRing = document.querySelector('#score .score-ring');
+  const mainNum = document.getElementById('main-ring-num');
+  const mainLabel = document.getElementById('main-ring-label');
+
+  function replayMainRing(){
+    animateRing(mainRing, mainNum, mainLabel, parseInt(mainRing.dataset.score, 10));
+  }
+
+  // Auto-play once when the ATS Score section scrolls into view
+  const scoreObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        replayMainRing();
+        scoreObserver.disconnect();
+      }
+    });
+  }, { threshold: 0.5 });
+  scoreObserver.observe(document.getElementById('score'));
+
+  // Hero mini ring: (re)plays every time the "Score" tab is opened
+  const heroRing = document.getElementById('hero-ring');
+  const heroNum = document.getElementById('hero-ring-num');
+  const heroLabel = document.getElementById('hero-ring-label');
+  function replayHeroRing(){
+    animateRing(heroRing, heroNum, heroLabel, parseInt(heroRing.dataset.score, 10), 1300);
+  }
+</script>
+
+<script>
+  function heroTab(btn, pane){
+    document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.hero-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pane-' + pane).classList.add('active');
+    if (pane === 'score') replayHeroRing();
+  }
+</script>
+
+<script>
+  // ---- Full resume builder engine ----
+  let expCount = 0;
+
+  function addExperience(prefill){
+    expCount++;
+    const id = expCount;
+    const wrap = document.createElement('div');
+    wrap.className = 'exp-entry';
+    wrap.dataset.id = id;
+    wrap.innerHTML = `
+      <button type="button" class="remove-exp" onclick="removeExperience(${id})">Remove</button>
+      <div class="field">
+        <label>Job title</label>
+        <input type="text" class="exp-title" placeholder="e.g. Marketing Lead" oninput="renderResume()">
+      </div>
+      <div class="field">
+        <label>Company</label>
+        <input type="text" class="exp-company" placeholder="e.g. Northwind Digital" oninput="renderResume()">
+      </div>
+      <div class="exp-row">
+        <div class="field">
+          <label>Start date</label>
+          <input type="text" class="exp-start" placeholder="e.g. 2022" oninput="renderResume()">
+        </div>
+        <div class="field">
+          <label>End date</label>
+          <input type="text" class="exp-end" placeholder="e.g. Present" oninput="renderResume()">
+        </div>
+      </div>
+      <div class="field">
+        <label>What did you do? (one line per achievement)</label>
+        <textarea class="exp-bullets" placeholder="Led go-to-market for a repositioning that grew qualified pipeline by 30%" oninput="renderResume()"></textarea>
+      </div>
+    `;
+    document.getElementById('exp-list').appendChild(wrap);
+    renderResume();
+  }
+
+  function removeExperience(id){
+    const el = document.querySelector(`.exp-entry[data-id="${id}"]`);
+    if (el) el.remove();
+    renderResume();
+  }
+
+  function renderResume(){
+    const val = (id) => document.getElementById(id).value.trim();
+
+    document.getElementById('out-name').textContent = val('in-name') || 'Your name';
+    document.getElementById('out-role').textContent = val('in-role') || 'Target role';
+    document.getElementById('out-contact').textContent = val('in-contact');
+    document.getElementById('out-summary').textContent = val('in-summary') || 'Your summary will appear here as you type.';
+
+    // Experience
+    const expListOut = document.getElementById('out-exp-list');
+    const entries = document.querySelectorAll('.exp-entry');
+    if (entries.length === 0){
+      expListOut.innerHTML = '<div class="lexp-empty">Your roles will appear here.</div>';
+    } else {
+      expListOut.innerHTML = '';
+      entries.forEach(entry => {
+        const title = entry.querySelector('.exp-title').value.trim() || 'Job title';
+        const company = entry.querySelector('.exp-company').value.trim();
+        const start = entry.querySelector('.exp-start').value.trim();
+        const end = entry.querySelector('.exp-end').value.trim();
+        const bulletsRaw = entry.querySelector('.exp-bullets').value.trim();
+        const bullets = bulletsRaw ? bulletsRaw.split('\n').filter(l => l.trim()) : [];
+
+        const block = document.createElement('div');
+        block.className = 'lexp-block';
+        block.innerHTML = `
+          <div class="lexp-top">
+            <span>${escapeHtml(title)}</span>
+            <span class="lexp-dates">${escapeHtml([start, end].filter(Boolean).join(' — '))}</span>
+          </div>
+          ${company ? `<div class="lexp-company">${escapeHtml(company)}</div>` : ''}
+          ${bullets.length ? `<ul class="lexp-bullets">${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul>` : ''}
+        `;
+        expListOut.appendChild(block);
+      });
+    }
+
+    // Education
+    const edu = val('in-edu');
+    document.getElementById('out-edu').textContent = edu;
+    document.getElementById('edu-hr').style.display = edu ? 'block' : 'none';
+    document.getElementById('edu-heading').style.display = edu ? 'block' : 'none';
+
+    // Skills
+    const skills = val('in-skills');
+    const skillsOut = document.getElementById('out-skills');
+    const skillsHr = document.getElementById('skills-hr');
+    const skillsHeading = document.getElementById('skills-heading');
+    if (skills){
+      skillsOut.innerHTML = skills.split(',').map(s => s.trim()).filter(Boolean)
+        .map(s => `<span>${escapeHtml(s)}</span>`).join('');
+      skillsHr.style.display = 'block';
+      skillsHeading.style.display = 'block';
+    } else {
+      skillsOut.innerHTML = '';
+      skillsHr.style.display = 'none';
+      skillsHeading.style.display = 'none';
+    }
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function downloadResumePDF(){
+    const name = document.getElementById('in-name').value.trim();
+    document.title = name ? `${name} - Resume` : 'Resume - LandIt';
+    window.print();
+  }
+
+  // Wire up top-level fields
+  ['in-name','in-role','in-contact','in-summary','in-edu','in-skills'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderResume);
+  });
+
+  // Start with one experience entry pre-added
+  addExperience();
+</script>
+
+</body>
+</html>
