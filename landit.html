@@ -554,7 +554,7 @@
       <div class="ring-wrap">
         <svg width="200" height="200" viewBox="0 0 200 200">
           <circle cx="100" cy="100" r="86" fill="none" stroke="#E4DED2" stroke-width="14"/>
-          <circle class="score-ring" data-score="82" cx="100" cy="100" r="86" fill="none" stroke="#1F9E5E" stroke-width="14"
+          <circle class="score-ring" id="main-ring" cx="100" cy="100" r="86" fill="none" stroke="#1F9E5E" stroke-width="14"
             stroke-linecap="round" stroke-dasharray="540" stroke-dashoffset="540"
             transform="rotate(-90 100 100)"/>
         </svg>
@@ -564,10 +564,10 @@
         </div>
       </div>
       <div class="breakdown">
-        <div class="bd-row"><span class="lbl">Content</span><div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--forest);"></div></div><span class="pct">90%</span></div>
-        <div class="bd-row"><span class="lbl">Impact</span><div class="bar-track"><div class="bar-fill" style="width:74%; background:var(--teal);"></div></div><span class="pct">74%</span></div>
-        <div class="bd-row"><span class="lbl">Keywords</span><div class="bar-track"><div class="bar-fill" style="width:58%; background:var(--amber);"></div></div><span class="pct">58%</span></div>
-        <div class="bd-row"><span class="lbl">Formatting</span><div class="bar-track"><div class="bar-fill" style="width:95%; background:var(--plum);"></div></div><span class="pct">95%</span></div>
+        <div class="bd-row"><span class="lbl">Content</span><div class="bar-track"><div class="bar-fill" id="score-content-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="score-content-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl">Impact</span><div class="bar-track"><div class="bar-fill" id="score-impact-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="score-impact-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl">Keywords</span><div class="bar-track"><div class="bar-fill" id="score-keywords-bar" style="width:0%; background:var(--amber);"></div></div><span class="pct" id="score-keywords-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl">Formatting</span><div class="bar-track"><div class="bar-fill" id="score-formatting-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="score-formatting-pct">0%</span></div>
       </div>
       <p style="grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); margin-top:-6px;">Ordered by how much each one weighs in a hiring manager's read — content first, formatting last. <a href="#" onclick="event.preventDefault(); replayMainRing();" style="color:var(--forest); font-weight:600;">Replay score animation ↻</a></p>
     </div>
@@ -586,12 +586,7 @@
         <label for="jd">Job description</label>
         <textarea id="jd" style="min-height:100px" placeholder="Paste a job description to see matched and missing keywords…">We're looking for a Product Marketing Manager with experience in go-to-market strategy, positioning, sprint planning, and cross-functional collaboration with sales and design teams.</textarea>
       </div>
-      <div class="kw-chips">
-        <span class="chip matched">✓ Go-to-market strategy</span>
-        <span class="chip matched">✓ Cross-functional collaboration</span>
-        <span class="chip missing">+ Positioning</span>
-        <span class="chip missing">+ Sprint planning</span>
-      </div>
+      <div class="kw-chips" id="kw-chips"></div>
     </div>
   </div>
 </section>
@@ -733,10 +728,17 @@
     return 'Weak';
   }
 
+  // Tracks the latest animation call per ring element so a new call
+  // (e.g. triggered by live edits) cleanly supersedes one still in flight,
+  // instead of two rAF loops fighting over the same DOM node.
+  const ringAnimTokens = new WeakMap();
   function animateRing(ringEl, numEl, labelEl, target, duration){
     duration = duration || 1700;
+    const token = {};
+    ringAnimTokens.set(ringEl, token);
     const start = performance.now();
     function frame(now){
+      if (ringAnimTokens.get(ringEl) !== token) return; // superseded
       const t = Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
       const value = eased * target;
@@ -750,12 +752,13 @@
     requestAnimationFrame(frame);
   }
 
-  const mainRing = document.querySelector('#score .score-ring');
+  const mainRing = document.getElementById('main-ring');
   const mainNum = document.getElementById('main-ring-num');
   const mainLabel = document.getElementById('main-ring-label');
+  let latestAtsScore = 0;
 
   function replayMainRing(){
-    animateRing(mainRing, mainNum, mainLabel, parseInt(mainRing.dataset.score, 10));
+    animateRing(mainRing, mainNum, mainLabel, latestAtsScore);
   }
 
   // Auto-play once when the ATS Score section scrolls into view
@@ -769,7 +772,9 @@
   }, { threshold: 0.5 });
   scoreObserver.observe(document.getElementById('score'));
 
-  // Hero mini ring: (re)plays every time the "Score" tab is opened
+  // Hero mini ring: (re)plays every time the "Score" tab is opened.
+  // This mini preview is a fixed marketing illustration, independent of
+  // the real, live-computed score in the ATS Score section below.
   const heroRing = document.getElementById('hero-ring');
   const heroNum = document.getElementById('hero-ring-num');
   const heroLabel = document.getElementById('hero-ring-label');
@@ -891,6 +896,11 @@
       skillsHr.style.display = 'none';
       skillsHeading.style.display = 'none';
     }
+
+    // Guarded: the very first call comes from this same script block's
+    // own initial addExperience() run, before the analysis engine
+    // (defined in a later <script> block) has loaded.
+    if (typeof scheduleAnalysisUpdate === 'function') scheduleAnalysisUpdate();
   }
 
   function escapeHtml(str){
@@ -912,6 +922,219 @@
 
   // Start with one experience entry pre-added
   addExperience();
+</script>
+
+<script>
+  // ---- Real ATS score + keyword targeting engine ----
+  // Everything here reads the same resume fields the builder above uses,
+  // and the job description box in the Keyword Targeting section — no
+  // backend, no AI call, just transparent, explainable heuristics.
+
+  const STRONG_VERBS = new Set(['led','built','launched','increased','reduced','managed','designed',
+    'developed','implemented','created','improved','delivered','drove','negotiated','spearheaded',
+    'streamlined','optimized','achieved','generated','grew','cut','automated','established',
+    'coordinated','directed','executed','oversaw','resolved','trained','mentored','presented',
+    'scaled','won','secured','exceeded','saved','accelerated','pioneered','transformed','redesigned',
+    'authored','launched','partnered','shipped']);
+
+  const KEYWORD_STOPWORDS = new Set(['a','an','the','and','or','but','if','then','so','of','to','in',
+    'on','for','with','at','by','from','as','is','are','was','were','be','been','being','this','that',
+    'these','those','it','its','you','your','we','our','they','their','he','she','his','her','will',
+    'would','can','could','should','must','shall','may','might','not','no','do','does','did','have',
+    'has','had','i','me','my','us','who','whom','which','what','when','where','why','how','job','role',
+    'position','company','team','years','year','experience','looking','seeking','candidate','ideal',
+    'strong','excellent','ability','skills','including','etc']);
+
+  function getResumeSnapshot(){
+    const val = (id) => document.getElementById(id).value.trim();
+    const entries = Array.from(document.querySelectorAll('.exp-entry')).map(entry => ({
+      title: entry.querySelector('.exp-title').value.trim(),
+      company: entry.querySelector('.exp-company').value.trim(),
+      start: entry.querySelector('.exp-start').value.trim(),
+      end: entry.querySelector('.exp-end').value.trim(),
+      bullets: entry.querySelector('.exp-bullets').value.trim().split('\n').map(l => l.trim()).filter(Boolean),
+    }));
+    return {
+      name: val('in-name'),
+      role: val('in-role'),
+      contact: val('in-contact'),
+      summary: val('in-summary'),
+      edu: val('in-edu'),
+      skills: val('in-skills').split(',').map(s => s.trim()).filter(Boolean),
+      entries,
+    };
+  }
+
+  function resumeFullText(r){
+    return [r.name, r.role, r.summary, r.edu, r.skills.join(' '),
+      ...r.entries.flatMap(e => [e.title, e.company, ...e.bullets])].join(' \n ');
+  }
+
+  function scoreContent(r){
+    let score = 0;
+    if (r.name) score += 5;
+    if (r.role) score += 5;
+    if (r.contact) score += 5;
+    if (r.summary){
+      score += 10;
+      if (r.summary.length >= 40 && r.summary.length <= 500) score += 5;
+    }
+    if (r.entries.length > 0){
+      score += 10;
+      const withCompany = r.entries.filter(e => e.company).length;
+      const withDates = r.entries.filter(e => e.start || e.end).length;
+      const withBullets = r.entries.filter(e => e.bullets.length > 0).length;
+      score += (withCompany / r.entries.length) * 5;
+      score += (withDates / r.entries.length) * 5;
+      score += (withBullets / r.entries.length) * 15;
+    }
+    if (r.edu) score += 10;
+    score += Math.min(r.skills.length, 6) / 6 * 10;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  function scoreImpact(r){
+    const bullets = r.entries.flatMap(e => e.bullets);
+    if (bullets.length === 0) return 15;
+    let total = 0;
+    bullets.forEach(b => {
+      const firstWord = (b.match(/[a-zA-Z']+/) || [''])[0].toLowerCase();
+      const hasVerb = STRONG_VERBS.has(firstWord);
+      const hasMetric = /\d/.test(b);
+      total += (hasVerb ? 50 : 0) + (hasMetric ? 50 : 0);
+    });
+    return Math.round(total / bullets.length);
+  }
+
+  function scoreFormatting(r){
+    let score = 100;
+    if (!r.edu) score -= 12;
+    if (r.skills.length === 0) score -= 12;
+    if (r.summary && r.summary.length < 20) score -= 8;
+    if (r.summary && r.summary.length > 600) score -= 8;
+    if (r.contact && !r.contact.includes('@')) score -= 10;
+    const allBullets = r.entries.flatMap(e => e.bullets);
+    const longBullets = allBullets.filter(b => b.length > 260).length;
+    score -= Math.min(longBullets * 6, 18);
+    const hasStrayChars = allBullets.some(b => /[•\t]/.test(b));
+    if (hasStrayChars) score -= 10;
+    if (r.entries.length === 0) score -= 15;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  function cleanWord(w){
+    return w.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  }
+
+  // Pulls candidate skill/requirement phrases out of a pasted job
+  // description. Splits on sentence and clause boundaries (commas,
+  // "and"/"or"/"with"), then trims filler words from each clause so a
+  // long sentence like "...experience in go-to-market strategy" reduces
+  // to the meaningful tail phrase ("go-to-market strategy") instead of
+  // being thrown out for being too long.
+  function extractKeywords(jdText){
+    if (!jdText) return [];
+    const normalized = jdText.replace(/\n+/g, '. ');
+    const rawChunks = normalized.split(/,|;|\.|(?:\s+and\s+)|(?:\s+or\s+)|(?:\s+with\s+)/i);
+
+    const seen = new Map();
+    rawChunks.forEach(chunk => {
+      let words = chunk.trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) return;
+      if (words.length > 4) words = words.slice(-4);
+      while (words.length && KEYWORD_STOPWORDS.has(cleanWord(words[words.length - 1]))) words.pop();
+      while (words.length && KEYWORD_STOPWORDS.has(cleanWord(words[0]))) words.shift();
+      if (words.length === 0) return;
+      const phrase = words.join(' ').replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+      const key = phrase.toLowerCase();
+      if (phrase.length < 2 || phrase.length > 40 || KEYWORD_STOPWORDS.has(key)) return;
+      if (!seen.has(key)) seen.set(key, phrase);
+    });
+
+    return Array.from(seen.values()).slice(0, 10);
+  }
+
+  function escapeRegex(str){
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // Word-boundary match, not substring — a bare .includes() would let a
+  // short keyword like "Go" false-positive-match inside "algorithm" or
+  // "background".
+  function keywordAppears(keyword, haystackLower){
+    const pattern = new RegExp('\\b' + escapeRegex(keyword.toLowerCase()) + '\\b', 'i');
+    return pattern.test(haystackLower);
+  }
+
+  function computeKeywordMatch(jdText, resumeText){
+    const keywords = extractKeywords(jdText);
+    const haystack = resumeText.toLowerCase();
+    const matched = [];
+    const missing = [];
+    keywords.forEach(kw => {
+      if (keywordAppears(kw, haystack)) matched.push(kw);
+      else missing.push(kw);
+    });
+    const score = keywords.length ? Math.round((matched.length / keywords.length) * 100) : null;
+    return { matched, missing, score };
+  }
+
+  function setBar(prefix, value){
+    const bar = document.getElementById(prefix + '-bar');
+    const pct = document.getElementById(prefix + '-pct');
+    if (bar) bar.style.width = value + '%';
+    if (pct) pct.textContent = value + '%';
+  }
+
+  function renderKeywordChips(matched, missing){
+    const container = document.getElementById('kw-chips');
+    if (!container) return;
+    if (matched.length === 0 && missing.length === 0){
+      container.innerHTML = '<span class="lexp-empty">Paste a job description above to see matched and missing keywords.</span>';
+      return;
+    }
+    const chips = [
+      ...matched.map(kw => `<span class="chip matched">✓ ${escapeHtml(kw)}</span>`),
+      ...missing.map(kw => `<span class="chip missing">+ ${escapeHtml(kw)}</span>`),
+    ];
+    container.innerHTML = chips.join('');
+  }
+
+  function updateAnalysis(){
+    const resume = getResumeSnapshot();
+    const resumeText = resumeFullText(resume);
+    const jdText = document.getElementById('jd').value.trim();
+
+    const content = scoreContent(resume);
+    const impact = scoreImpact(resume);
+    const formatting = scoreFormatting(resume);
+    const { matched, missing, score: keywordScore } = computeKeywordMatch(jdText, resumeText);
+
+    const overall = keywordScore === null
+      ? Math.round(content * 0.45 + impact * 0.35 + formatting * 0.20)
+      : Math.round(content * 0.35 + impact * 0.25 + keywordScore * 0.25 + formatting * 0.15);
+
+    setBar('score-content', content);
+    setBar('score-impact', impact);
+    setBar('score-keywords', keywordScore === null ? 0 : keywordScore);
+    setBar('score-formatting', formatting);
+
+    latestAtsScore = overall;
+    animateRing(mainRing, mainNum, mainLabel, overall, 900);
+
+    renderKeywordChips(matched, missing);
+  }
+
+  let analysisDebounce = null;
+  function scheduleAnalysisUpdate(){
+    clearTimeout(analysisDebounce);
+    analysisDebounce = setTimeout(updateAnalysis, 300);
+  }
+
+  document.getElementById('jd').addEventListener('input', scheduleAnalysisUpdate);
+
+  // Initial run once the page (and the pre-added experience entry) is ready
+  updateAnalysis();
 </script>
 
 <script>

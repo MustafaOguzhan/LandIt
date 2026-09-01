@@ -57,8 +57,8 @@ status of each feature:
 |---|---|
 | Resume builder (name, role, contact, summary, multiple experience entries, education, skills) | **Fully functional.** Live preview updates in real time. |
 | PDF download | **Fully functional**, via browser print (`window.print()` + `@media print` CSS that isolates the resume). No backend needed for this — works as-is once deployed. |
-| ATS score | **Fake/demo only.** Hardcoded score (82) with a nice animation, but does not analyze the actual resume content. Needs a real scoring approach (heuristic or AI-based). |
-| Keyword targeting | **Fake/demo only.** Chips are hardcoded regardless of what's pasted in the job description box. Needs real text comparison logic. |
+| ATS score | **Real, heuristic-based.** Client-side JS in `landit.html` scores Content/Impact/Keywords/Formatting from the actual builder fields (field completeness, strong-verb + metric detection in bullets, structural sanity checks) and blends them into the overall score; the ring/breakdown bars update live as you type. No backend or AI call. |
+| Keyword targeting | **Real, heuristic-based.** Extracts candidate phrases from the pasted job description (clause-boundary splitting + filler-word trimming) and checks each against the resume with word-boundary matching; chips update live. Same computation feeds the ATS score's "Keywords" sub-score. |
 | AI mock interview | **Real text chat, wired to Claude.** `api/interview.js` (Vercel serverless function) holds the Anthropic API key server-side and returns the interviewer's next question plus live clarity/structure/specificity/confidence scores as JSON; the frontend chat log and score bars in `landit.html` are driven by real responses, not scripted ones. Requires `ANTHROPIC_API_KEY` to be set in the deployment's environment variables to actually respond (see README) — without it, the UI shows a clear "needs to be deployed with a key" error instead of failing silently. Voice input/output is not built yet — text only. |
 | Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
@@ -72,7 +72,8 @@ status of each feature:
    `api/interview.js`). Remaining: deploy with an API key, and voice
    input/output is a possible later enhancement, not required for launch.
 3. Auth + Stripe subscription (trial → annual) — the monetization engine.
-4. Real ATS scoring + keyword targeting logic.
+4. ✅ Real ATS scoring + keyword targeting logic — heuristic-based,
+   client-side, no backend needed (see status table above).
 5. Real job search data.
 
 ## Notes for whoever picks this up
