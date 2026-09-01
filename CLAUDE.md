@@ -49,8 +49,10 @@ standard and legal in this market — dozens of competitors exist.
   different" section and a hero tab, not as the main value prop.
 
 ## Current prototype state
-A single-file frontend (`landit.html`) plus one serverless backend endpoint
-(`api/interview.js`, for the AI interview) exist in this project. Honest
+A single-file frontend (`landit.html`) plus a few serverless backend
+endpoints (`api/interview.js` for the AI interview, `api/create-checkout-
+session.js` and `api/stripe-webhook.js` for payments) exist in this project,
+backed by a Supabase project for auth/data (`supabase/schema.sql`). Honest
 status of each feature:
 
 | Feature | Status |
@@ -62,16 +64,19 @@ status of each feature:
 | AI mock interview | **Real text chat, wired to Claude.** `api/interview.js` (Vercel serverless function) holds the Anthropic API key server-side and returns the interviewer's next question plus live clarity/structure/specificity/confidence scores as JSON; the frontend chat log and score bars in `landit.html` are driven by real responses, not scripted ones. Requires `ANTHROPIC_API_KEY` to be set in the deployment's environment variables to actually respond (see README) — without it, the UI shows a clear "needs to be deployed with a key" error instead of failing silently. Voice input/output is not built yet — text only. |
 | Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
-| User accounts / auth | **Not built.** |
-| Payments / subscription (7-day trial → annual plan) | **Not built.** |
-| Data persistence (saving a resume between visits) | **Not built.** |
+| User accounts / auth | **Real, via Supabase Auth.** Email/password sign up and log in (modal on any "Log in" / "Start free trial" click). Session persists across visits. `supabase/schema.sql` defines the `profiles` table (auto-created per user via a DB trigger) with RLS so a user can only ever read/write their own row. Needs a real Supabase project's URL/anon key filled in (see README) — the SQL migration is written but has to be run once against that project. |
+| Payments / subscription (7-day trial → annual plan) | **Real, via Stripe.** The 7-day trial requires no card — it's tracked purely in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe is only involved when a user clicks "Continue to LandIt Pro": `api/create-checkout-session.js` creates a real Stripe Checkout Session; `api/stripe-webhook.js` verifies Stripe's webhook signature and updates `profiles.subscription_status` (active/past_due/canceled) so the nav trial/Pro badge reflects reality. Needs a Stripe account + product/price + webhook configured (see README). Feature-gating specific builder actions by subscription status (e.g. blocking the builder once the trial expires) is not implemented yet — trial/Pro status is tracked and displayed, but nothing is hard-blocked on it. |
+| Data persistence (saving a resume between visits) | **Real, via Supabase.** For a logged-in user, the resume auto-saves (debounced) to the `resumes` table on every change and loads back in on their next visit/device. Logged-out visitors still get the full builder with no persistence, same as before. |
 
 ## Suggested build priority (as discussed, subject to the owner's input)
 1. ✅ Resume builder + PDF export — done, real, working.
 2. ✅ AI mock interview (text) — real Claude API integration built (see
    `api/interview.js`). Remaining: deploy with an API key, and voice
    input/output is a possible later enhancement, not required for launch.
-3. Auth + Stripe subscription (trial → annual) — the monetization engine.
+3. ✅ Auth + Stripe subscription (trial → annual) — real Supabase auth +
+   real Stripe Checkout/webhook (see status table above). Remaining: run
+   the SQL migration and fill in real Supabase/Stripe credentials (see
+   README); optionally add hard feature-gating by subscription status later.
 4. ✅ Real ATS scoring + keyword targeting logic — heuristic-based,
    client-side, no backend needed (see status table above).
 5. Real job search data.
