@@ -25,6 +25,59 @@ Rules for every reply:
 - Respond with ONLY a JSON object and nothing else — no markdown code fences, no commentary before or after — matching exactly this shape:
 {"reply": string, "scores": {"clarity": number, "structure": number, "specificity": number, "confidence": number}, "tip": string}`;
 
+const FALLBACK_REPLY = "Sorry, I didn't quite catch that — could you tell me a bit more?";
+
+// Claude is instructed to reply with pure JSON, but models occasionally wrap
+// it in markdown fences or add a stray sentence before/after. This extracts
+// and validates the JSON object defensively so a parsing hiccup never leaks
+// raw/malformed model output (which the UI would show, and even speak aloud)
+// to the candidate — it always falls back to a safe, generic message instead.
+function parseInterviewReply(rawText) {
+  const candidates = [];
+  const trimmed = (rawText || '').trim();
+
+  // 1) as-is
+  candidates.push(trimmed);
+
+  // 2) strip ```json ... ``` or ``` ... ``` fences
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch) candidates.push(fenceMatch[1].trim());
+
+  // 3) outermost {...} substring, in case of leading/trailing commentary
+  const first = trimmed.indexOf('{');
+  const last = trimmed.lastIndexOf('}');
+  if (first !== -1 && last > first) candidates.push(trimmed.slice(first, last + 1));
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    let obj;
+    try {
+      obj = JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+    if (!obj || typeof obj !== 'object' || typeof obj.reply !== 'string' || !obj.reply.trim()) {
+      continue;
+    }
+
+    const scores = obj.scores && typeof obj.scores === 'object' ? {} : null;
+    if (scores) {
+      for (const key of ['clarity', 'structure', 'specificity', 'confidence']) {
+        const n = Number(obj.scores[key]);
+        scores[key] = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
+      }
+    }
+
+    return {
+      reply: obj.reply.trim(),
+      scores,
+      tip: typeof obj.tip === 'string' && obj.tip.trim() ? obj.tip.trim() : null,
+    };
+  }
+
+  return { reply: FALLBACK_REPLY, scores: null, tip: null };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -104,14 +157,7 @@ module.exports = async (req, res) => {
     const data = await upstream.json();
     const rawText = (data.content || []).map((block) => block.text || '').join('');
 
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      parsed = { reply: rawText || "Sorry, I didn't catch that — could you say more?", scores: null, tip: null };
-    }
-
-    res.status(200).json(parsed);
+    res.status(200).json(parseInterviewReply(rawText));
   } catch (err) {
     res.status(500).json({ error: 'Interview request failed', detail: String(err) });
   }
