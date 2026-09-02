@@ -49,17 +49,16 @@ standard and legal in this market — dozens of competitors exist.
   different" section and a hero tab, not as the main value prop.
 
 ## Current prototype state
-A single-file frontend (`landit.html`) plus one serverless backend endpoint
-(`api/interview.js`, for the AI interview) exist in this project. Honest
-status of each feature:
+A working single-file HTML/CSS/JS prototype exists (`landit.html`,
+attached to this project). Honest status of each feature:
 
 | Feature | Status |
 |---|---|
 | Resume builder (name, role, contact, summary, multiple experience entries, education, skills) | **Fully functional.** Live preview updates in real time. |
 | PDF download | **Fully functional**, via browser print (`window.print()` + `@media print` CSS that isolates the resume). No backend needed for this — works as-is once deployed. |
-| ATS score | **Real, heuristic-based.** Client-side JS in `landit.html` scores Content/Impact/Keywords/Formatting from the actual builder fields (field completeness, strong-verb + metric detection in bullets, structural sanity checks) and blends them into the overall score; the ring/breakdown bars update live as you type. No backend or AI call. |
-| Keyword targeting | **Real, heuristic-based.** Extracts candidate phrases from the pasted job description (clause-boundary splitting + filler-word trimming) and checks each against the resume with word-boundary matching; chips update live. Same computation feeds the ATS score's "Keywords" sub-score. |
-| AI mock interview | **Real text chat, wired to Claude.** `api/interview.js` (Vercel serverless function) holds the Anthropic API key server-side and returns the interviewer's next question plus live clarity/structure/specificity/confidence scores as JSON; the frontend chat log and score bars in `landit.html` are driven by real responses, not scripted ones. Requires `ANTHROPIC_API_KEY` to be set in the deployment's environment variables to actually respond (see README) — without it, the UI shows a clear "needs to be deployed with a key" error instead of failing silently. Voice input/output is not built yet — text only. |
+| ATS score | **Fake/demo only.** Hardcoded score (82) with a nice animation, but does not analyze the actual resume content. Needs a real scoring approach (heuristic or AI-based). |
+| Keyword targeting | **Fake/demo only.** Chips are hardcoded regardless of what's pasted in the job description box. Needs real text comparison logic. |
+| AI mock interview | **Fake/demo only.** The chat is a scripted mockup — no real AI, no input, no real scoring. Needs real integration (e.g. Claude API) plus likely speech input/output. |
 | Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
 | User accounts / auth | **Not built.** |
@@ -68,13 +67,37 @@ status of each feature:
 
 ## Suggested build priority (as discussed, subject to the owner's input)
 1. ✅ Resume builder + PDF export — done, real, working.
-2. ✅ AI mock interview (text) — real Claude API integration built (see
-   `api/interview.js`). Remaining: deploy with an API key, and voice
-   input/output is a possible later enhancement, not required for launch.
+2. AI mock interview — real integration (this is the key differentiator).
 3. Auth + Stripe subscription (trial → annual) — the monetization engine.
-4. ✅ Real ATS scoring + keyword targeting logic — heuristic-based,
-   client-side, no backend needed (see status table above).
+4. Real ATS scoring + keyword targeting logic.
 5. Real job search data.
+
+## Frontend design quality rules
+Apply these whenever writing or editing any frontend code for LandIt:
+
+- Invoke the `frontend-design` skill before writing frontend code, every session.
+- **Colors:** never fall back to default Tailwind palette colors (indigo-500,
+  blue-600, etc.) if using Tailwind. Use LandIt's actual palette above.
+- **Shadows:** avoid flat, generic shadows — use layered, subtle, color-tinted
+  shadows (the existing prototype's `--shadow` token is a reference point).
+- **Typography:** keep the Fraunces (display/headings) + Inter (body) pairing
+  — never collapse to a single font for both. Tight tracking on large
+  headings, generous line-height on body text.
+- **Animations:** animate only `transform` and `opacity`; never use
+  `transition-all`. Prefer smooth, spring-like easing (see the ATS score
+  ring's animateRing function in landit.html for the established pattern).
+- **Interactive states:** every clickable element (buttons, links, tabs,
+  form fields) needs visible hover, focus-visible, and active states —
+  no exceptions.
+- **Spacing:** use consistent, intentional spacing — not arbitrary values.
+- **Depth:** give surfaces a clear layering system (base page → card →
+  floating/modal), not everything on one flat plane.
+- If a reference image/design is ever provided for a specific page, match
+  its layout/spacing/typography/color exactly rather than "improving" on it;
+  screenshot the local build and compare against the reference at least
+  twice before considering it done.
+- Do not add sections, features, or content that weren't asked for —
+  check with the owner before expanding scope on a design task.
 
 ## Notes for whoever picks this up
 - The owner is not a developer — explain technical tradeoffs in plain
