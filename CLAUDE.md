@@ -81,6 +81,126 @@ status of each feature:
    client-side, no backend needed (see status table above).
 5. Real job search data.
 
+## Frontend design quality rules
+Apply these whenever writing or editing any frontend code for LandIt:
+
+- Invoke the `frontend-design` skill before writing frontend code, every session.
+- **Colors:** never fall back to default Tailwind palette colors (indigo-500,
+  blue-600, etc.) if using Tailwind. Use LandIt's actual palette above.
+- **Shadows:** avoid flat, generic shadows — use layered, subtle, color-tinted
+  shadows (the existing prototype's `--shadow` token is a reference point).
+- **Typography:** keep the Fraunces (display/headings) + Inter (body) pairing
+  — never collapse to a single font for both. Tight tracking on large
+  headings, generous line-height on body text.
+- **Animations:** animate only `transform` and `opacity`; never use
+  `transition-all`. Prefer smooth, spring-like easing (see the ATS score
+  ring's animateRing function in landit.html for the established pattern).
+- **Interactive states:** every clickable element (buttons, links, tabs,
+  form fields) needs visible hover, focus-visible, and active states —
+  no exceptions.
+- **Spacing:** use consistent, intentional spacing — not arbitrary values.
+- **Depth:** give surfaces a clear layering system (base page → card →
+  floating/modal), not everything on one flat plane.
+- If a reference image/design is ever provided for a specific page, match
+  its layout/spacing/typography/color exactly rather than "improving" on it;
+  screenshot the local build and compare against the reference at least
+  twice before considering it done.
+- Do not add sections, features, or content that weren't asked for —
+  check with the owner before expanding scope on a design task.
+
+## Reference material (a professional's 11-video build series, NOT our own decisions yet)
+The owner watched a full Turkish YouTube series (11 videos) of a professional
+building and monetizing a similar resume-app-as-SaaS end to end, using
+Antigravity (not Claude Code) with a fast, hands-off philosophy ("just let
+the agent do everything, don't review the code"). **The owner's own priority
+is the opposite: reliable and bug-free over fast — do not adopt that video's
+philosophy by default.** Below is what that series covered, kept as
+reference/inspiration only — none of it is decided for LandIt yet.
+
+**Tech stack the video used** (each needs the tradeoff-presentation process
+below before adoption for LandIt):
+- Supabase — database + user auth (manual SQL migrations run by hand in
+  Supabase's SQL editor, not fully automated)
+- Stripe — payments (sandbox/test mode first; product + price created in
+  dashboard; webhook endpoint configured; Stripe's pre-built "Pricing Table"
+  embed used as a shortcut instead of a custom checkout UI)
+- Resend — transactional email (e.g. magic-link login emails)
+- Apify — scraping LinkedIn/job posting data (referred to as "Epify" in the
+  transcripts)
+- Deploy chain: GitHub → Vercel and/or Netlify and/or Bolt.new. Notably, when
+  one platform's deploy error couldn't be fixed, the video's approach was to
+  hand the same GitHub repo to a *different* deploy platform (tried Vercel,
+  then Netlify, then Bolt.new) rather than keep fighting one tool — a
+  reasonable fallback strategy if we ever get stuck on a deploy error too.
+- 21st.dev / Magic MCP / React Bits — pre-built professional UI components
+  (pulled in via MCP) to avoid a generic "vibe-coded" look. LandIt already
+  has a fully custom, bespoke design system, so this is likely unnecessary
+  for us, but worth knowing it exists as an option if a specific new page
+  ever needs a fast, polished layout.
+- Google Stitch / Whisk (Mixboard) — AI tools for logo and brand-asset
+  generation (color variants, transparent backgrounds, moodboards).
+- Mixpanel — product analytics (tracking what users click/do in-app).
+
+**A feature idea worth considering (not decided):** the video's app generates
+a shareable link for each tailored resume/cover letter (e.g. to send to a
+recruiter on LinkedIn). The link works free for 7 days; after that it
+redirects to an upgrade/payment page. Critically, downloading the resume as
+a file has NO restriction — only the *shareable link* is what's time-gated.
+This is a different mechanic than LandIt's current plan (a blanket 7-day
+trial across the whole product) and could be evaluated as an alternative or
+addition once we design the real monetization flow.
+
+**Pricing rationale from the video:** landed on a single price — no monthly
+tier — reasoning that people build a resume infrequently, so a recurring
+monthly charge doesn't match actual usage. This supports (doesn't
+override) LandIt's existing annual-only plan.
+
+**Process lessons observed across the series:**
+- Always ask the agent to plan before big changes, review the plan, then
+  approve execution — repeated in nearly every episode.
+- When testing auth-gated flows (magic-link email, signup), tell the agent
+  to test in "dev mode" rather than "as a real user," since the agent can't
+  receive real emails.
+- After buying a real domain, the auth provider's "Site URL" / redirect
+  config must be updated to the new domain, or login/verification links
+  break. Easy to forget — worth a checklist item whenever we go live on a
+  real domain.
+- Progress was NOT linear — recurring bugs (created resumes disappearing,
+  broken links, features silently not saving to the database) needed
+  repeated rounds of "here's the error, fix it" over ~7 days of active work,
+  even with the agent doing all the coding.
+
+**Honest real-world outcome (important context, not a promise):** after the
+full 11-day build-and-launch cycle, the video's app made about €200 from 2
+paying customers in its first ~7 days live, with no ad spend — the creator
+himself called this underwhelming ("çok başarılı oldu mu? Bence olmadı").
+Turkish-language social content barely got any views; switching to English
+content did notably better. His own conclusion: **building the app was the
+easy part; marketing/selling it was the harder part and moved slower than
+expected.** Treat this as a realistic baseline, not a guaranteed outcome —
+useful for calibrating expectations, not as evidence that this exact
+playbook will work.
+
+Separately, later parts of the series covered using AI-generated "influencer"
+avatars (via Sora/Kie/Prototypical + ElevenLabs voice + Nano Banana images)
+to produce fake-testimonial-style marketing videos at very low cost. This is
+a marketing technique, not a build technique — **flag the advertising/
+disclosure risk if the owner ever wants to pursue this**: many ad platforms
+and consumer-protection rules require disclosing AI-generated
+"testimonials" as such, and any claims the AI character makes about the
+product should stay truthful and non-exaggerated. Don't build or recommend
+this without that caveat being raised explicitly.
+
+**Whenever a technology/service choice needs to be made** (database, auth
+provider, payment integration, UI component sources, etc.), present it like
+this:
+1. State your own recommendation and why (favor reliability/security).
+2. If the referenced video series used a different choice for that same
+   decision, name it explicitly and explain the actual tradeoff between the
+   two (not just "the video used X" — explain what's genuinely better/worse
+   about each for LandIt specifically).
+3. Let the owner pick — don't default silently to either one.
+
 ## Notes for whoever picks this up
 - The owner is not a developer — explain technical tradeoffs in plain
   terms, and default to the most reliable/secure option rather than the
