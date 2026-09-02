@@ -1000,6 +1000,10 @@
   }
 
   function downloadResumePDF(){
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('Downloading your resume as a PDF needs an active trial or subscription.');
+      return;
+    }
     const name = document.getElementById('in-name').value.trim();
     document.title = name ? `${name} - Resume` : 'Resume - LandIt';
     window.print();
@@ -1305,6 +1309,10 @@
   }
 
   async function searchJobs(){
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('Job search needs an active trial or subscription.');
+      return;
+    }
     const what = document.getElementById('job-query').value.trim() || document.getElementById('in-role').value.trim();
     const where = document.getElementById('job-location').value.trim();
     const listEl = document.getElementById('job-list');
@@ -1391,6 +1399,11 @@
     const ta = document.getElementById('ai-answer');
     const text = ta.value.trim();
     if (!text) return;
+
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('The AI mock interview needs an active trial or subscription.');
+      return;
+    }
 
     const btn = document.getElementById('ai-send-btn');
     const errEl = document.getElementById('ai-error');
@@ -1549,6 +1562,27 @@
   function trialDaysLeft(trialStartedAt){
     const elapsedDays = (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24);
     return Math.max(0, Math.ceil(7 - elapsedDays));
+  }
+
+  // Gate for paid-tier actions (PDF download, AI interview, job search).
+  // The resume builder itself and the ATS score / keyword targeting stay
+  // free for everyone - only these three require a logged-in account with
+  // an active trial or paid subscription.
+  function hasActiveAccess(){
+    if (!supabaseReady || !currentSession || !currentProfile) return false;
+    if (currentProfile.subscription_status === 'active') return true;
+    return trialDaysLeft(currentProfile.trial_started_at) > 0;
+  }
+
+  function promptUpgrade(message){
+    if (!currentSession){
+      alert(message + ' Start your free 7-day trial (no card needed) to continue.');
+      openAuthModal('signup');
+      return;
+    }
+    alert(message + ' Your trial has ended — choose a plan to keep going.');
+    const pricing = document.getElementById('pricing');
+    if (pricing) pricing.scrollIntoView({ behavior: 'smooth' });
   }
 
   function renderNavAuth(){
