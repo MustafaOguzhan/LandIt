@@ -1,7 +1,7 @@
 # LandIt
 
 AI-powered resume builder + AI mock interview practice, with accounts and a
-7-day free trial → paid annual subscription.
+7-day free trial → paid monthly or yearly subscription.
 
 ## Deploying (Vercel)
 
@@ -10,7 +10,7 @@ AI-powered resume builder + AI mock interview practice, with accounts and a
 3. Before the first deploy, open **Environment Variables** and add:
    - `ANTHROPIC_API_KEY` — get one at [console.anthropic.com](https://console.anthropic.com). Powers the AI mock interview. Without it, the interview chat still loads but shows a clear "needs an API key" message instead of a real response.
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from a Supabase project (see below). Used server-side only, for Stripe webhook writes.
-   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` — from a Stripe account (see below).
+   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MONTHLY`, `STRIPE_PRICE_ID_YEARLY` — from a Stripe account (see below).
 4. Click **Deploy**. Every future push to this branch redeploys automatically.
 
 The site itself (`landit.html`) is served at `/`. `/api/interview`,
@@ -39,20 +39,22 @@ are ever exposed to the browser.
    you can turn off "Confirm email" for easier testing, or leave it on for
    production.)
 
-### Setting up Stripe (the $89/year subscription)
+### Setting up Stripe (the $24/mo or $99/yr subscription)
 
 1. Create an account at [stripe.com](https://stripe.com).
 2. Go to **Product catalog → Add product**. Name it (e.g. "LandIt Pro"),
-   set pricing to **Recurring, Yearly, $89**. Save, then copy the **Price ID**
-   (starts with `price_...`) — set it as `STRIPE_PRICE_ID` in Vercel.
-3. Go to **Developers → API keys** and copy the **Secret key** (starts with
+   add a price: **Recurring, Monthly, $24**. Save, then on the product page
+   click **Add another price**: **Recurring, Yearly, $99**.
+3. Copy both **Price IDs** (start with `price_...`) — set them as
+   `STRIPE_PRICE_ID_MONTHLY` and `STRIPE_PRICE_ID_YEARLY` in Vercel.
+4. Go to **Developers → API keys** and copy the **Secret key** (starts with
    `sk_...`) — set it as `STRIPE_SECRET_KEY` in Vercel.
-4. Go to **Developers → Webhooks → Add endpoint**. Endpoint URL:
+5. Go to **Developers → Webhooks → Add endpoint**. Endpoint URL:
    `https://<your-deployed-domain>/api/stripe-webhook`. Select these events:
    `checkout.session.completed`, `customer.subscription.updated`,
    `customer.subscription.deleted`. Save, then copy the **Signing secret**
    (starts with `whsec_...`) — set it as `STRIPE_WEBHOOK_SECRET` in Vercel.
-5. Redeploy (or just push any small change) so Vercel picks up the new
+6. Redeploy (or just push any small change) so Vercel picks up the new
    environment variables.
 
 Note: the 7-day free trial requires no credit card by design — it's tracked

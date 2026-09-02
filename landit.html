@@ -304,8 +304,9 @@
   .tmpl-name{padding:12px 16px; font-weight:600; font-size:14px; border-top:1px solid var(--line);}
 
   /* ---------- Pricing ---------- */
-  .price-grid{display:grid; grid-template-columns:1fr 1fr; gap:28px; max-width:760px; margin:0 auto;}
-  @media (max-width:700px){.price-grid{grid-template-columns:1fr;}}
+  .price-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:24px; max-width:940px; margin:0 auto;}
+  @media (max-width:860px){.price-grid{grid-template-columns:1fr; max-width:420px;}}
+  .price-save{font-size:12.5px; font-weight:600; color:var(--forest-deep); margin-top:6px;}
   .price-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:34px; text-align:left;}
   .price-card.highlight{border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-tint);}
   .price-tag{display:inline-block; background:var(--amber-tint); color:#8A5A16; font-size:12px; font-weight:700; padding:4px 11px; border-radius:999px; margin-bottom:14px;}
@@ -706,7 +707,7 @@
     <div class="section-head" style="margin-left:auto; margin-right:auto; text-align:center;">
       <span class="kicker" style="color:var(--teal);">PRICING</span>
       <h2>Try it free. Keep it if it works.</h2>
-      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, no card required. After that, one simple annual plan.</p>
+      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, no card required. After that, monthly or yearly — your call.</p>
     </div>
     <div class="price-grid">
       <div class="price-card">
@@ -720,9 +721,9 @@
         </ul>
         <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="width:100%;">Start free trial</a>
       </div>
-      <div class="price-card highlight">
-        <div class="price-tag">Most popular</div>
-        <div class="price-num">$89 <span>/ year</span></div>
+      <div class="price-card">
+        <div class="price-tag">Monthly</div>
+        <div class="price-num">$24 <span>/ month</span></div>
         <ul class="price-list">
           <li>✓ Everything in the free trial</li>
           <li>✓ Unlimited tailored resumes</li>
@@ -730,7 +731,20 @@
           <li>✓ Full job search &amp; match scoring</li>
           <li>✓ All templates, unlimited downloads</li>
         </ul>
-        <a class="btn btn-primary" href="#" id="checkout-btn" onclick="event.preventDefault(); startCheckout();" style="width:100%;">Continue to LandIt Pro</a>
+        <a class="btn btn-ghost checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('monthly', this);" style="width:100%;">Continue with Monthly</a>
+      </div>
+      <div class="price-card highlight">
+        <div class="price-tag">Best value</div>
+        <div class="price-num">$99 <span>/ year</span></div>
+        <div class="price-save">≈ $8.25/mo — save 65% vs. monthly</div>
+        <ul class="price-list">
+          <li>✓ Everything in the free trial</li>
+          <li>✓ Unlimited tailored resumes</li>
+          <li>✓ Unlimited interview practice</li>
+          <li>✓ Full job search &amp; match scoring</li>
+          <li>✓ All templates, unlimited downloads</li>
+        </ul>
+        <a class="btn btn-primary checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('yearly', this);" style="width:100%;">Continue with Yearly</a>
       </div>
     </div>
   </div>
@@ -1480,12 +1494,11 @@
     if (error) console.error('saveResumeToDb error', error);
   }
 
-  async function startCheckout(){
+  async function startCheckout(plan, btn){
     if (!currentSession){
       openAuthModal('signup');
       return;
     }
-    const btn = document.getElementById('checkout-btn');
     const original = btn.textContent;
     btn.textContent = 'Redirecting…';
     btn.style.pointerEvents = 'none';
@@ -1496,6 +1509,7 @@
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + currentSession.access_token,
         },
+        body: JSON.stringify({ plan }),
       });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error || ('Checkout failed (' + res.status + ')'));

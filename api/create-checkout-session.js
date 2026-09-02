@@ -1,9 +1,9 @@
 // Vercel serverless function — POST /api/create-checkout-session
 //
-// Called by a logged-in user clicking "Continue to LandIt Pro". Verifies
-// their Supabase session, finds or creates their Stripe customer, and
-// returns a Stripe Checkout Session URL for the $89/year subscription.
-// The 7-day trial itself is tracked entirely in Supabase (profiles.
+// Called by a logged-in user clicking "Continue to LandIt Pro" (monthly or
+// yearly). Verifies their Supabase session, finds or creates their Stripe
+// customer, and returns a Stripe Checkout Session URL for the chosen plan's
+// price. The 7-day trial itself is tracked entirely in Supabase (profiles.
 // trial_started_at) - Stripe is only involved once someone actually
 // subscribes, which is what makes "no credit card required" for the
 // trial possible.
@@ -17,11 +17,22 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_PRICE_ID } = process.env;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !STRIPE_SECRET_KEY || !STRIPE_PRICE_ID) {
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_PRICE_ID_MONTHLY, STRIPE_PRICE_ID_YEARLY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !STRIPE_SECRET_KEY || !STRIPE_PRICE_ID_MONTHLY || !STRIPE_PRICE_ID_YEARLY) {
     res.status(500).json({ error: 'Server is missing required environment variables. See README.md.' });
     return;
   }
+
+  let body = req.body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { body = null; }
+  }
+  const plan = body?.plan;
+  if (plan !== 'monthly' && plan !== 'yearly') {
+    res.status(400).json({ error: 'plan must be "monthly" or "yearly"' });
+    return;
+  }
+  const priceId = plan === 'monthly' ? STRIPE_PRICE_ID_MONTHLY : STRIPE_PRICE_ID_YEARLY;
 
   const authHeader = req.headers.authorization || '';
   const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -66,7 +77,7 @@ module.exports = async (req, res) => {
       mode: 'subscription',
       customer: customerId,
       client_reference_id: user.id,
-      line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/landit.html?checkout=success`,
       cancel_url: `${origin}/landit.html?checkout=cancel`,
     });

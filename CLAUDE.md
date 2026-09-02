@@ -11,7 +11,11 @@ standard and legal in this market — dozens of competitors exist.
 ## Business model
 - Target audience: broad / general job seekers, not a specific niche.
 - Monetization: **7-day free trial, no credit card required**, then a
-  **paid annual subscription** (current placeholder price: $89/year).
+  **paid subscription — $24/month or $99/year** (owner's decision; priced
+  to undercut Rezi.ai's $29/mo as a reference point, with the annual plan
+  discounted ~65% vs. paying monthly to nudge people toward it). No
+  lifetime/one-time-payment tier — explicitly ruled out by the owner due to
+  the unbounded long-term support liability of a one-time payment.
 - Priority: the owner has explicitly said **cost is not a concern — the
   top priority is a reliable, bug-free product.** Prefer correctness and
   stability over speed of delivery, especially for anything touching
@@ -65,7 +69,7 @@ status of each feature:
 | Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
 | User accounts / auth | **Real, via Supabase Auth.** Email/password sign up and log in (modal on any "Log in" / "Start free trial" click). Session persists across visits. `supabase/schema.sql` defines the `profiles` table (auto-created per user via a DB trigger) with RLS so a user can only ever read/write their own row. Needs a real Supabase project's URL/anon key filled in (see README) — the SQL migration is written but has to be run once against that project. |
-| Payments / subscription (7-day trial → annual plan) | **Real, via Stripe.** The 7-day trial requires no card — it's tracked purely in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe is only involved when a user clicks "Continue to LandIt Pro": `api/create-checkout-session.js` creates a real Stripe Checkout Session; `api/stripe-webhook.js` verifies Stripe's webhook signature and updates `profiles.subscription_status` (active/past_due/canceled) so the nav trial/Pro badge reflects reality. Needs a Stripe account + product/price + webhook configured (see README). Feature-gating specific builder actions by subscription status (e.g. blocking the builder once the trial expires) is not implemented yet — trial/Pro status is tracked and displayed, but nothing is hard-blocked on it. |
+| Payments / subscription (7-day trial → $24/mo or $99/yr) | **Real, via Stripe.** The 7-day trial requires no card — it's tracked purely in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe is only involved when a user picks "Continue with Monthly" or "Continue with Yearly": `api/create-checkout-session.js` takes a `plan` ('monthly'/'yearly'), maps it to the matching Stripe Price ID, and creates a real Checkout Session; `api/stripe-webhook.js` verifies Stripe's webhook signature and updates `profiles.subscription_status` (active/past_due/canceled) so the nav trial/Pro badge reflects reality. Needs a Stripe account + product with both prices + webhook configured (see README). Feature-gating specific builder actions by subscription status (e.g. blocking the builder once the trial expires) is not implemented yet — trial/Pro status is tracked and displayed, but nothing is hard-blocked on it. |
 | Data persistence (saving a resume between visits) | **Real, via Supabase.** For a logged-in user, the resume auto-saves (debounced) to the `resumes` table on every change and loads back in on their next visit/device. Logged-out visitors still get the full builder with no persistence, same as before. |
 
 ## Suggested build priority (as discussed, subject to the owner's input)
