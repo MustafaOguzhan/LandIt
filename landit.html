@@ -206,6 +206,36 @@
   .skill-tags{display:flex; flex-wrap:wrap; gap:6px;}
   .skill-tags span{background:var(--paper); border:1px solid var(--line); padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; color:var(--ink-soft);}
 
+  /* ---------- Resume templates ---------- */
+  /* Clearline (default, forest) is the base .live-resume styling above -
+     no override block needed. The other three layer on top of it via
+     [data-template], varying accent color/rules/spacing only - never DOM
+     structure - so every template stays exactly as print-reliable as the
+     default. */
+  #resume-preview[data-template="fieldwork"]{border-left:5px solid var(--teal); padding-left:26px;}
+  #resume-preview[data-template="fieldwork"] .lrole{color:var(--teal-deep, var(--teal));}
+  #resume-preview[data-template="fieldwork"] .lsection{color:var(--teal); letter-spacing:.08em;}
+  #resume-preview[data-template="fieldwork"] .lname{letter-spacing:-.01em;}
+
+  #resume-preview[data-template="groundwork"] .lname{color:var(--clay);}
+  #resume-preview[data-template="groundwork"] .lrole{color:var(--ink-soft); text-transform:uppercase; font-size:12.5px; letter-spacing:.06em;}
+  #resume-preview[data-template="groundwork"] .lsection{color:#fff; background:var(--clay); display:inline-block; padding:3px 10px; border-radius:3px; letter-spacing:.04em;}
+  #resume-preview[data-template="groundwork"] .lexp-block .lexp-top{font-size:13.5px;}
+  #resume-preview[data-template="groundwork"] hr{border-top-color:var(--clay-tint);}
+
+  #resume-preview[data-template="runway"] .lname{color:var(--plum);}
+  #resume-preview[data-template="runway"] .lrole{background:var(--plum-tint); color:var(--plum); display:inline-block; padding:3px 10px; border-radius:999px; font-size:12.5px; margin-top:6px;}
+  #resume-preview[data-template="runway"] .lsection{border-top:2px solid var(--plum); padding-top:8px; color:var(--ink);}
+  #resume-preview[data-template="runway"] hr{display:none;}
+  #resume-preview[data-template="runway"] .skill-tags span{background:var(--plum-tint); color:var(--plum); border-color:transparent;}
+
+  .tmpl-card{cursor:pointer; transition:box-shadow .15s, border-color .15s;}
+  .tmpl-card:hover{box-shadow:var(--shadow);}
+  .tmpl-card.selected{border-color:var(--forest); box-shadow:0 0 0 2px var(--forest-tint);}
+  .tmpl-name{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .tmpl-check{display:none; color:var(--forest); font-weight:700;}
+  .tmpl-card.selected .tmpl-check{display:inline;}
+
   /* ---- Print / PDF export ---- */
   @media print{
     body{background:#fff !important;}
@@ -217,6 +247,7 @@
     #resume-preview{
       display:block !important; border:none; box-shadow:none; border-radius:0;
       padding:0.4in; font-size:12pt;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
     }
     #resume-preview .lname{font-size:22pt;}
     @page{ margin:0; size:auto; }
@@ -500,6 +531,9 @@
     </div>
     <div class="ai-grid">
       <div class="ai-chat">
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost btn-sm" id="voice-toggle-btn" onclick="toggleVoiceOutput()" style="display:none;">🔊 Voice on</button>
+        </div>
         <div id="ai-chat-log">
           <div class="msg ai">
             <div class="avatar">AI</div>
@@ -507,7 +541,8 @@
           </div>
         </div>
         <div style="display:flex; gap:10px; align-items:flex-end;">
-          <textarea id="ai-answer" placeholder="Type your answer…" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
+          <textarea id="ai-answer" placeholder="Type your answer, or use the mic…" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
+          <button type="button" class="btn btn-ghost btn-sm" id="mic-btn" onclick="toggleMic()" style="display:none;" title="Speak your answer" aria-label="Speak your answer">🎤</button>
           <button type="button" class="btn btn-primary btn-sm" id="ai-send-btn" onclick="sendInterviewAnswer()">Send</button>
         </div>
         <p id="ai-error" style="display:none; font-size:12.5px; color:var(--clay); margin-top:-8px;"></p>
@@ -569,7 +604,7 @@
         <a class="btn btn-primary" href="#" onclick="event.preventDefault(); downloadResumePDF();" style="width:100%; margin-top:22px;">Download as PDF</a>
       </div>
 
-      <div class="card live-resume" id="resume-preview">
+      <div class="card live-resume" id="resume-preview" data-template="clearline">
         <div class="lname" id="out-name">Your name</div>
         <div class="lrole" id="out-role">Target role</div>
         <div class="lcontact" id="out-contact"></div>
@@ -671,24 +706,25 @@
       <h2>Formats that pass the scan and the skim.</h2>
       <p>Every template is built to parse cleanly through ATS software first, and read well to a human second.</p>
     </div>
-    <div class="tmpl-row">
-      <div class="tmpl-card">
+    <div class="tmpl-row" id="tmpl-row">
+      <div class="tmpl-card selected" data-template="clearline" onclick="selectTemplate('clearline')">
         <div class="tmpl-swatch"><div class="sline" style="width:60%; background:var(--forest);"></div><div class="sline" style="width:40%"></div><div class="sline" style="width:90%; margin-top:14px;"></div><div class="sline" style="width:80%"></div></div>
-        <div class="tmpl-name">Clearline</div>
+        <div class="tmpl-name">Clearline <span class="tmpl-check">✓</span></div>
       </div>
-      <div class="tmpl-card">
+      <div class="tmpl-card" data-template="fieldwork" onclick="selectTemplate('fieldwork')">
         <div class="tmpl-swatch"><div class="sline" style="width:50%; background:var(--teal);"></div><div class="sline" style="width:30%"></div><div class="sline" style="width:95%; margin-top:14px;"></div><div class="sline" style="width:70%"></div></div>
-        <div class="tmpl-name">Fieldwork</div>
+        <div class="tmpl-name">Fieldwork <span class="tmpl-check">✓</span></div>
       </div>
-      <div class="tmpl-card">
+      <div class="tmpl-card" data-template="groundwork" onclick="selectTemplate('groundwork')">
         <div class="tmpl-swatch"><div class="sline" style="width:70%; background:var(--clay);"></div><div class="sline" style="width:45%"></div><div class="sline" style="width:85%; margin-top:14px;"></div><div class="sline" style="width:60%"></div></div>
-        <div class="tmpl-name">Groundwork</div>
+        <div class="tmpl-name">Groundwork <span class="tmpl-check">✓</span></div>
       </div>
-      <div class="tmpl-card">
+      <div class="tmpl-card" data-template="runway" onclick="selectTemplate('runway')">
         <div class="tmpl-swatch"><div class="sline" style="width:55%; background:var(--plum);"></div><div class="sline" style="width:35%"></div><div class="sline" style="width:92%; margin-top:14px;"></div><div class="sline" style="width:75%"></div></div>
-        <div class="tmpl-name">Runway</div>
+        <div class="tmpl-name">Runway <span class="tmpl-check">✓</span></div>
       </div>
     </div>
+    <p style="text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:16px;">Click a template to apply it to your resume above and in the PDF download.</p>
   </div>
 </section>
 
@@ -935,8 +971,8 @@
     // Education
     const edu = val('in-edu');
     document.getElementById('out-edu').textContent = edu;
-    document.getElementById('edu-hr').style.display = edu ? 'block' : 'none';
-    document.getElementById('edu-heading').style.display = edu ? 'block' : 'none';
+    document.getElementById('edu-hr').style.display = edu ? '' : 'none';
+    document.getElementById('edu-heading').style.display = edu ? '' : 'none';
 
     // Skills
     const skills = val('in-skills');
@@ -946,8 +982,8 @@
     if (skills){
       skillsOut.innerHTML = skills.split(',').map(s => s.trim()).filter(Boolean)
         .map(s => `<span>${escapeHtml(s)}</span>`).join('');
-      skillsHr.style.display = 'block';
-      skillsHeading.style.display = 'block';
+      skillsHr.style.display = '';
+      skillsHeading.style.display = '';
     } else {
       skillsOut.innerHTML = '';
       skillsHr.style.display = 'none';
@@ -968,9 +1004,21 @@
   }
 
   function downloadResumePDF(){
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('Downloading your resume as a PDF needs an active trial or subscription.');
+      return;
+    }
     const name = document.getElementById('in-name').value.trim();
     document.title = name ? `${name} - Resume` : 'Resume - LandIt';
     window.print();
+  }
+
+  function selectTemplate(name){
+    document.getElementById('resume-preview').dataset.template = name;
+    document.querySelectorAll('.tmpl-card').forEach(card => {
+      card.classList.toggle('selected', card.dataset.template === name);
+    });
+    if (typeof scheduleResumeSave === 'function') scheduleResumeSave();
   }
 
   // Wire up top-level fields
@@ -1020,6 +1068,7 @@
       edu: val('in-edu'),
       skills: val('in-skills').split(',').map(s => s.trim()).filter(Boolean),
       entries,
+      template: document.getElementById('resume-preview').dataset.template || 'clearline',
     };
   }
 
@@ -1264,6 +1313,10 @@
   }
 
   async function searchJobs(){
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('Job search needs an active trial or subscription.');
+      return;
+    }
     const what = document.getElementById('job-query').value.trim() || document.getElementById('in-role').value.trim();
     const where = document.getElementById('job-location').value.trim();
     const listEl = document.getElementById('job-list');
@@ -1300,6 +1353,80 @@
     { role: 'ai', content: "Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline." }
   ];
   let interviewBusy = false;
+
+  // ---- Voice input/output (Web Speech API - browser-native, no backend) ----
+  // Feature-detected: Firefox has no SpeechRecognition, so the mic button
+  // simply stays hidden there and typing still works normally. The seed
+  // question above is never auto-spoken (no user gesture yet on page
+  // load - most browsers block that); every reply after the visitor's
+  // own click to send an answer is fair game.
+  const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micSupported = !!SpeechRecognitionImpl;
+  const voiceOutputSupported = 'speechSynthesis' in window;
+  let voiceOutputEnabled = true;
+  let recognition = null;
+  let micListening = false;
+
+  if (micSupported){
+    recognition = new SpeechRecognitionImpl();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const ta = document.getElementById('ai-answer');
+      ta.value = (ta.value.trim() ? ta.value.trim() + ' ' : '') + transcript;
+    };
+    recognition.onerror = () => { stopMicUi(); };
+    recognition.onend = () => { stopMicUi(); };
+
+    document.getElementById('mic-btn').style.display = '';
+  }
+
+  if (voiceOutputSupported){
+    document.getElementById('voice-toggle-btn').style.display = '';
+  }
+
+  function stopMicUi(){
+    micListening = false;
+    const btn = document.getElementById('mic-btn');
+    btn.textContent = '🎤';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-ghost');
+  }
+
+  function toggleMic(){
+    if (!micSupported) return;
+    if (micListening){
+      recognition.stop();
+      return;
+    }
+    micListening = true;
+    const btn = document.getElementById('mic-btn');
+    btn.textContent = '⏹';
+    btn.classList.remove('btn-ghost');
+    btn.classList.add('btn-primary');
+    try {
+      recognition.start();
+    } catch (err) {
+      stopMicUi();
+    }
+  }
+
+  function toggleVoiceOutput(){
+    voiceOutputEnabled = !voiceOutputEnabled;
+    document.getElementById('voice-toggle-btn').textContent = voiceOutputEnabled ? '🔊 Voice on' : '🔇 Voice off';
+    if (!voiceOutputEnabled) window.speechSynthesis.cancel();
+  }
+
+  function speak(text){
+    if (!voiceOutputSupported || !voiceOutputEnabled || !text) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  }
 
   function appendChatMessage(role, text){
     const log = document.getElementById('ai-chat-log');
@@ -1351,6 +1478,14 @@
     const text = ta.value.trim();
     if (!text) return;
 
+    if (micListening) recognition.stop();
+    if (voiceOutputSupported) window.speechSynthesis.cancel();
+
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('The AI mock interview needs an active trial or subscription.');
+      return;
+    }
+
     const btn = document.getElementById('ai-send-btn');
     const errEl = document.getElementById('ai-error');
     errEl.style.display = 'none';
@@ -1375,6 +1510,7 @@
 
       removeTypingIndicator(typingId);
       appendChatMessage('ai', data.reply);
+      speak(data.reply);
       interviewHistory.push({ role: 'ai', content: data.reply });
       updateInterviewScores(data.scores);
       if (data.tip) {
@@ -1510,6 +1646,27 @@
     return Math.max(0, Math.ceil(7 - elapsedDays));
   }
 
+  // Gate for paid-tier actions (PDF download, AI interview, job search).
+  // The resume builder itself and the ATS score / keyword targeting stay
+  // free for everyone - only these three require a logged-in account with
+  // an active trial or paid subscription.
+  function hasActiveAccess(){
+    if (!supabaseReady || !currentSession || !currentProfile) return false;
+    if (currentProfile.subscription_status === 'active') return true;
+    return trialDaysLeft(currentProfile.trial_started_at) > 0;
+  }
+
+  function promptUpgrade(message){
+    if (!currentSession){
+      alert(message + ' Start your free 7-day trial (no card needed) to continue.');
+      openAuthModal('signup');
+      return;
+    }
+    alert(message + ' Your trial has ended — choose a plan to keep going.');
+    const pricing = document.getElementById('pricing');
+    if (pricing) pricing.scrollIntoView({ behavior: 'smooth' });
+  }
+
   function renderNavAuth(){
     const container = document.getElementById('navcta');
     if (!container) return;
@@ -1556,6 +1713,7 @@
     document.getElementById('in-summary').value = snapshot.summary || '';
     document.getElementById('in-edu').value = snapshot.edu || '';
     document.getElementById('in-skills').value = (snapshot.skills || []).join(', ');
+    selectTemplate(snapshot.template || 'clearline');
 
     document.querySelectorAll('.exp-entry').forEach(el => el.remove());
     expCount = 0;
