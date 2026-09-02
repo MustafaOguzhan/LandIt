@@ -531,6 +531,9 @@
     </div>
     <div class="ai-grid">
       <div class="ai-chat">
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost btn-sm" id="voice-toggle-btn" onclick="toggleVoiceOutput()" style="display:none;">🔊 Voice on</button>
+        </div>
         <div id="ai-chat-log">
           <div class="msg ai">
             <div class="avatar">AI</div>
@@ -538,7 +541,8 @@
           </div>
         </div>
         <div style="display:flex; gap:10px; align-items:flex-end;">
-          <textarea id="ai-answer" placeholder="Type your answer…" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
+          <textarea id="ai-answer" placeholder="Type your answer, or use the mic…" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
+          <button type="button" class="btn btn-ghost btn-sm" id="mic-btn" onclick="toggleMic()" style="display:none;" title="Speak your answer" aria-label="Speak your answer">🎤</button>
           <button type="button" class="btn btn-primary btn-sm" id="ai-send-btn" onclick="sendInterviewAnswer()">Send</button>
         </div>
         <p id="ai-error" style="display:none; font-size:12.5px; color:var(--clay); margin-top:-8px;"></p>
@@ -1350,6 +1354,80 @@
   ];
   let interviewBusy = false;
 
+  // ---- Voice input/output (Web Speech API - browser-native, no backend) ----
+  // Feature-detected: Firefox has no SpeechRecognition, so the mic button
+  // simply stays hidden there and typing still works normally. The seed
+  // question above is never auto-spoken (no user gesture yet on page
+  // load - most browsers block that); every reply after the visitor's
+  // own click to send an answer is fair game.
+  const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micSupported = !!SpeechRecognitionImpl;
+  const voiceOutputSupported = 'speechSynthesis' in window;
+  let voiceOutputEnabled = true;
+  let recognition = null;
+  let micListening = false;
+
+  if (micSupported){
+    recognition = new SpeechRecognitionImpl();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const ta = document.getElementById('ai-answer');
+      ta.value = (ta.value.trim() ? ta.value.trim() + ' ' : '') + transcript;
+    };
+    recognition.onerror = () => { stopMicUi(); };
+    recognition.onend = () => { stopMicUi(); };
+
+    document.getElementById('mic-btn').style.display = '';
+  }
+
+  if (voiceOutputSupported){
+    document.getElementById('voice-toggle-btn').style.display = '';
+  }
+
+  function stopMicUi(){
+    micListening = false;
+    const btn = document.getElementById('mic-btn');
+    btn.textContent = '🎤';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-ghost');
+  }
+
+  function toggleMic(){
+    if (!micSupported) return;
+    if (micListening){
+      recognition.stop();
+      return;
+    }
+    micListening = true;
+    const btn = document.getElementById('mic-btn');
+    btn.textContent = '⏹';
+    btn.classList.remove('btn-ghost');
+    btn.classList.add('btn-primary');
+    try {
+      recognition.start();
+    } catch (err) {
+      stopMicUi();
+    }
+  }
+
+  function toggleVoiceOutput(){
+    voiceOutputEnabled = !voiceOutputEnabled;
+    document.getElementById('voice-toggle-btn').textContent = voiceOutputEnabled ? '🔊 Voice on' : '🔇 Voice off';
+    if (!voiceOutputEnabled) window.speechSynthesis.cancel();
+  }
+
+  function speak(text){
+    if (!voiceOutputSupported || !voiceOutputEnabled || !text) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
   function appendChatMessage(role, text){
     const log = document.getElementById('ai-chat-log');
     const div = document.createElement('div');
@@ -1400,6 +1478,9 @@
     const text = ta.value.trim();
     if (!text) return;
 
+    if (micListening) recognition.stop();
+    if (voiceOutputSupported) window.speechSynthesis.cancel();
+
     if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
       promptUpgrade('The AI mock interview needs an active trial or subscription.');
       return;
@@ -1429,6 +1510,7 @@
 
       removeTypingIndicator(typingId);
       appendChatMessage('ai', data.reply);
+      speak(data.reply);
       interviewHistory.push({ role: 'ai', content: data.reply });
       updateInterviewScores(data.scores);
       if (data.tip) {
