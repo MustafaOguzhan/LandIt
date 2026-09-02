@@ -1,0 +1,8 @@
+{
+  "name": "landit",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
+    "stripe": "^22.6.0"
+  }
+}

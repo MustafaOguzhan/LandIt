@@ -11,7 +11,11 @@ standard and legal in this market — dozens of competitors exist.
 ## Business model
 - Target audience: broad / general job seekers, not a specific niche.
 - Monetization: **7-day free trial, no credit card required**, then a
-  **paid annual subscription** (current placeholder price: $89/year).
+  **paid subscription — $24/month or $99/year** (owner's decision; priced
+  to undercut Rezi.ai's $29/mo as a reference point, with the annual plan
+  discounted ~65% vs. paying monthly to nudge people toward it). No
+  lifetime/one-time-payment tier — explicitly ruled out by the owner due to
+  the unbounded long-term support liability of a one-time payment.
 - Priority: the owner has explicitly said **cost is not a concern — the
   top priority is a reliable, bug-free product.** Prefer correctness and
   stability over speed of delivery, especially for anything touching
@@ -49,27 +53,36 @@ standard and legal in this market — dozens of competitors exist.
   different" section and a hero tab, not as the main value prop.
 
 ## Current prototype state
-A working single-file HTML/CSS/JS prototype exists (`landit.html`,
-attached to this project). Honest status of each feature:
+A single-file frontend (`landit.html`) plus a few serverless backend
+endpoints (`api/interview.js` for the AI interview, `api/create-checkout-
+session.js` and `api/stripe-webhook.js` for payments) exist in this project,
+backed by a Supabase project for auth/data (`supabase/schema.sql`). Honest
+status of each feature:
 
 | Feature | Status |
 |---|---|
 | Resume builder (name, role, contact, summary, multiple experience entries, education, skills) | **Fully functional.** Live preview updates in real time. |
 | PDF download | **Fully functional**, via browser print (`window.print()` + `@media print` CSS that isolates the resume). No backend needed for this — works as-is once deployed. |
-| ATS score | **Fake/demo only.** Hardcoded score (82) with a nice animation, but does not analyze the actual resume content. Needs a real scoring approach (heuristic or AI-based). |
-| Keyword targeting | **Fake/demo only.** Chips are hardcoded regardless of what's pasted in the job description box. Needs real text comparison logic. |
-| AI mock interview | **Fake/demo only.** The chat is a scripted mockup — no real AI, no input, no real scoring. Needs real integration (e.g. Claude API) plus likely speech input/output. |
+| ATS score | **Real, heuristic-based.** Client-side JS in `landit.html` scores Content/Impact/Keywords/Formatting from the actual builder fields (field completeness, strong-verb + metric detection in bullets, structural sanity checks) and blends them into the overall score; the ring/breakdown bars update live as you type. No backend or AI call. |
+| Keyword targeting | **Real, heuristic-based.** Extracts candidate phrases from the pasted job description (clause-boundary splitting + filler-word trimming) and checks each against the resume with word-boundary matching; chips update live. Same computation feeds the ATS score's "Keywords" sub-score. |
+| AI mock interview | **Real text chat, wired to Claude.** `api/interview.js` (Vercel serverless function) holds the Anthropic API key server-side and returns the interviewer's next question plus live clarity/structure/specificity/confidence scores as JSON; the frontend chat log and score bars in `landit.html` are driven by real responses, not scripted ones. Requires `ANTHROPIC_API_KEY` to be set in the deployment's environment variables to actually respond (see README) — without it, the UI shows a clear "needs to be deployed with a key" error instead of failing silently. Voice input/output is not built yet — text only. |
 | Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
-| User accounts / auth | **Not built.** |
-| Payments / subscription (7-day trial → annual plan) | **Not built.** |
-| Data persistence (saving a resume between visits) | **Not built.** |
+| User accounts / auth | **Real, via Supabase Auth.** Email/password sign up and log in (modal on any "Log in" / "Start free trial" click). Session persists across visits. `supabase/schema.sql` defines the `profiles` table (auto-created per user via a DB trigger) with RLS so a user can only ever read/write their own row. Needs a real Supabase project's URL/anon key filled in (see README) — the SQL migration is written but has to be run once against that project. |
+| Payments / subscription (7-day trial → $24/mo or $99/yr) | **Real, via Stripe.** The 7-day trial requires no card — it's tracked purely in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe is only involved when a user picks "Continue with Monthly" or "Continue with Yearly": `api/create-checkout-session.js` takes a `plan` ('monthly'/'yearly'), maps it to the matching Stripe Price ID, and creates a real Checkout Session; `api/stripe-webhook.js` verifies Stripe's webhook signature and updates `profiles.subscription_status` (active/past_due/canceled) so the nav trial/Pro badge reflects reality. Needs a Stripe account + product with both prices + webhook configured (see README). Feature-gating specific builder actions by subscription status (e.g. blocking the builder once the trial expires) is not implemented yet — trial/Pro status is tracked and displayed, but nothing is hard-blocked on it. |
+| Data persistence (saving a resume between visits) | **Real, via Supabase.** For a logged-in user, the resume auto-saves (debounced) to the `resumes` table on every change and loads back in on their next visit/device. Logged-out visitors still get the full builder with no persistence, same as before. |
 
 ## Suggested build priority (as discussed, subject to the owner's input)
 1. ✅ Resume builder + PDF export — done, real, working.
-2. AI mock interview — real integration (this is the key differentiator).
-3. Auth + Stripe subscription (trial → annual) — the monetization engine.
-4. Real ATS scoring + keyword targeting logic.
+2. ✅ AI mock interview (text) — real Claude API integration built (see
+   `api/interview.js`). Remaining: deploy with an API key, and voice
+   input/output is a possible later enhancement, not required for launch.
+3. ✅ Auth + Stripe subscription (trial → annual) — real Supabase auth +
+   real Stripe Checkout/webhook (see status table above). Remaining: run
+   the SQL migration and fill in real Supabase/Stripe credentials (see
+   README); optionally add hard feature-gating by subscription status later.
+4. ✅ Real ATS scoring + keyword targeting logic — heuristic-based,
+   client-side, no backend needed (see status table above).
 5. Real job search data.
 
 ## Frontend design quality rules

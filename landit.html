@@ -15,6 +15,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%23FAF7F2'/%3E%3Cpath d='M3 19C7 13 12 6 22 4' stroke='%231F9E5E' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='0.5 4.5' fill='none'/%3E%3Cpath d='M22 4L17 5.5M22 4L20.5 9' stroke='%231F9E5E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='3' cy='19' r='3' fill='%23F5A623'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"></script>
 <style>
   :root{
     --ink: #1B2430;
@@ -303,8 +304,9 @@
   .tmpl-name{padding:12px 16px; font-weight:600; font-size:14px; border-top:1px solid var(--line);}
 
   /* ---------- Pricing ---------- */
-  .price-grid{display:grid; grid-template-columns:1fr 1fr; gap:28px; max-width:760px; margin:0 auto;}
-  @media (max-width:700px){.price-grid{grid-template-columns:1fr;}}
+  .price-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:24px; max-width:940px; margin:0 auto;}
+  @media (max-width:860px){.price-grid{grid-template-columns:1fr; max-width:420px;}}
+  .price-save{font-size:12.5px; font-weight:600; color:var(--forest-deep); margin-top:6px;}
   .price-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:34px; text-align:left;}
   .price-card.highlight{border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-tint);}
   .price-tag{display:inline-block; background:var(--amber-tint); color:#8A5A16; font-size:12px; font-weight:700; padding:4px 11px; border-radius:999px; margin-bottom:14px;}
@@ -323,9 +325,54 @@
 
   footer{padding:48px 0 32px; color:var(--ink-soft); font-size:13.5px;}
   .foot-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-top:1px solid var(--line); padding-top:28px; margin-top:56px;}
+
+  /* ---------- Auth modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(27,36,48,0.45); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay[hidden]{display:none;}
+  .modal-card{
+    background:#fff; border-radius:var(--radius-l); box-shadow:var(--shadow);
+    padding:32px; width:100%; max-width:380px; position:relative;
+  }
+  .modal-close{
+    position:absolute; top:16px; right:16px; background:none; border:none;
+    font-size:22px; line-height:1; color:var(--ink-soft); cursor:pointer; padding:4px;
+  }
+  .modal-close:hover{color:var(--ink);}
+  .modal-tabbar{display:flex; gap:4px; background:var(--paper); border-radius:10px; padding:4px; margin-bottom:22px;}
+  .modal-tab{
+    flex:1; border:none; background:transparent; padding:9px 0; border-radius:7px;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px; color:var(--ink-soft);
+    cursor:pointer; transition:all .15s;
+  }
+  .modal-tab.active{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(27,36,48,0.1);}
+  .auth-error{
+    background:var(--clay-tint); color:var(--clay); font-size:13px; font-weight:600;
+    padding:10px 13px; border-radius:var(--radius-s); margin:-4px 0 16px;
+  }
+  .auth-error[hidden]{display:none;}
+
+  /* ---------- Trial / subscription badge ---------- */
+  .trial-badge{
+    font-size:12px; font-weight:700; padding:5px 11px; border-radius:999px;
+    background:var(--amber-tint); color:#8A5A16; white-space:nowrap;
+  }
+  .trial-badge-pro{background:var(--forest-tint); color:var(--forest-deep);}
+  .trial-badge-expired{background:var(--clay-tint); color:var(--clay);}
+
+  .checkout-banner{
+    background:var(--forest-tint); color:var(--forest-deep); text-align:center;
+    font-size:14px; font-weight:600; padding:12px 20px;
+  }
+  .checkout-banner.cancel{background:var(--amber-tint); color:#8A5A16;}
+  .checkout-banner[hidden]{display:none;}
 </style>
 </head>
 <body>
+
+<div class="checkout-banner" id="checkout-banner" hidden></div>
 
 <header>
   <div class="wrap nav">
@@ -344,9 +391,9 @@
       <a href="#jobs">Job Search</a>
       <a href="#pricing">Pricing</a>
     </nav>
-    <div class="navcta">
-      <a class="btn btn-ghost btn-sm" href="#">Log in</a>
-      <a class="btn btn-primary btn-sm" href="#pricing">Start free trial</a>
+    <div class="navcta" id="navcta">
+      <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('login');">Log in</a>
+      <a class="btn btn-primary btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start free trial</a>
     </div>
   </div>
 </header>
@@ -358,7 +405,7 @@
       <h1>Write the resume that<br>actually lands the job.</h1>
       <p class="hero-sub">LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#pricing">Start your 7-day free trial</a>
+        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start your 7-day free trial</a>
         <a class="btn btn-ghost" href="#ai-interview">Try an AI interview</a>
       </div>
       <p class="hero-note">No credit card needed to try it. Cancel anytime during your trial.</p>
@@ -660,7 +707,7 @@
     <div class="section-head" style="margin-left:auto; margin-right:auto; text-align:center;">
       <span class="kicker" style="color:var(--teal);">PRICING</span>
       <h2>Try it free. Keep it if it works.</h2>
-      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, no card required. After that, one simple annual plan.</p>
+      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, no card required. After that, monthly or yearly — your call.</p>
     </div>
     <div class="price-grid">
       <div class="price-card">
@@ -672,11 +719,11 @@
           <li>✓ 1 keyword-targeted resume</li>
           <li>✓ 2 interview practice sessions</li>
         </ul>
-        <a class="btn btn-ghost" href="#" style="width:100%;">Start free trial</a>
+        <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="width:100%;">Start free trial</a>
       </div>
-      <div class="price-card highlight">
-        <div class="price-tag">Most popular</div>
-        <div class="price-num">$89 <span>/ year</span></div>
+      <div class="price-card">
+        <div class="price-tag">Monthly</div>
+        <div class="price-num">$24 <span>/ month</span></div>
         <ul class="price-list">
           <li>✓ Everything in the free trial</li>
           <li>✓ Unlimited tailored resumes</li>
@@ -684,7 +731,20 @@
           <li>✓ Full job search &amp; match scoring</li>
           <li>✓ All templates, unlimited downloads</li>
         </ul>
-        <a class="btn btn-primary" href="#" style="width:100%;">Continue to LandIt Pro</a>
+        <a class="btn btn-ghost checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('monthly', this);" style="width:100%;">Continue with Monthly</a>
+      </div>
+      <div class="price-card highlight">
+        <div class="price-tag">Best value</div>
+        <div class="price-num">$99 <span>/ year</span></div>
+        <div class="price-save">≈ $8.25/mo — save 65% vs. monthly</div>
+        <ul class="price-list">
+          <li>✓ Everything in the free trial</li>
+          <li>✓ Unlimited tailored resumes</li>
+          <li>✓ Unlimited interview practice</li>
+          <li>✓ Full job search &amp; match scoring</li>
+          <li>✓ All templates, unlimited downloads</li>
+        </ul>
+        <a class="btn btn-primary checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('yearly', this);" style="width:100%;">Continue with Yearly</a>
       </div>
     </div>
   </div>
@@ -694,7 +754,7 @@
   <h2>Your next job is one resume away.</h2>
   <p>Start free. No card, no pressure — just seven days to see if it lands.</p>
   <div class="hero-actions">
-    <a class="btn btn-primary" href="#pricing" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
+    <a class="btn btn-primary" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
   </div>
 </div>
 
@@ -829,6 +889,13 @@
       </div>
     `;
     document.getElementById('exp-list').appendChild(wrap);
+    if (prefill){
+      wrap.querySelector('.exp-title').value = prefill.title || '';
+      wrap.querySelector('.exp-company').value = prefill.company || '';
+      wrap.querySelector('.exp-start').value = prefill.start || '';
+      wrap.querySelector('.exp-end').value = prefill.end || '';
+      wrap.querySelector('.exp-bullets').value = (prefill.bullets || []).join('\n');
+    }
     renderResume();
   }
 
@@ -901,6 +968,7 @@
     // own initial addExperience() run, before the analysis engine
     // (defined in a later <script> block) has loaded.
     if (typeof scheduleAnalysisUpdate === 'function') scheduleAnalysisUpdate();
+    if (typeof scheduleResumeSave === 'function') scheduleResumeSave();
   }
 
   function escapeHtml(str){
@@ -1241,6 +1309,262 @@
       sendInterviewAnswer();
     }
   });
+</script>
+
+<div class="modal-overlay" id="auth-modal" hidden>
+  <div class="modal-card">
+    <button type="button" class="modal-close" onclick="closeAuthModal()" aria-label="Close">&times;</button>
+    <div class="modal-tabbar">
+      <button type="button" class="modal-tab active" data-mode="login" onclick="setAuthMode('login')">Log in</button>
+      <button type="button" class="modal-tab" data-mode="signup" onclick="setAuthMode('signup')">Sign up</button>
+    </div>
+    <form id="auth-form" data-mode="login" onsubmit="handleAuthSubmit(event)">
+      <div class="field">
+        <label for="auth-email">Email</label>
+        <input id="auth-email" type="email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="auth-password">Password</label>
+        <input id="auth-password" type="password" required minlength="6" autocomplete="current-password">
+      </div>
+      <p class="auth-error" id="auth-error" hidden></p>
+      <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;">Log in</button>
+    </form>
+    <p style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;">7-day free trial, no credit card required.</p>
+  </div>
+</div>
+
+<script>
+  // ---- Auth, trial status, resume persistence, and Stripe checkout ----
+  //
+  // SUPABASE_URL and SUPABASE_ANON_KEY are meant to be public — Supabase's
+  // security model is enforced server-side by Row Level Security policies
+  // (see supabase/schema.sql), not by keeping these values secret. Replace
+  // both with your own project's values from Supabase Dashboard -> Project
+  // Settings -> API.
+  const SUPABASE_URL = 'https://mfmtxvordmultehuxzqv.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbXR4dm9yZG11bHRlaHV4enF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMzY5NjYsImV4cCI6MjEwMzkxMjk2Nn0.Sc1G_GWBCIpNGTG68YpL3lE47wDALHUT8k3ov0JqWiI';
+
+  const supabaseReady = !SUPABASE_URL.includes('YOUR-PROJECT');
+  const supabaseClient = supabaseReady
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  let currentSession = null;
+  let currentProfile = null;
+  let suppressResumeChange = false;
+
+  function openAuthModal(mode){
+    if (!supabaseReady){
+      alert('Accounts aren\'t configured on this deployment yet (missing Supabase URL/key).');
+      return;
+    }
+    setAuthMode(mode || 'login');
+    document.getElementById('auth-modal').hidden = false;
+    document.getElementById('auth-email').focus();
+  }
+
+  function closeAuthModal(){
+    document.getElementById('auth-modal').hidden = true;
+    document.getElementById('auth-error').hidden = true;
+    document.getElementById('auth-form').reset();
+  }
+
+  function setAuthMode(mode){
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    document.getElementById('auth-form').dataset.mode = mode;
+    document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? 'Create account' : 'Log in';
+    document.getElementById('auth-error').hidden = true;
+  }
+
+  async function handleAuthSubmit(e){
+    e.preventDefault();
+    const mode = document.getElementById('auth-form').dataset.mode || 'login';
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    const btn = document.getElementById('auth-submit-btn');
+    errEl.hidden = true;
+    btn.disabled = true;
+    try {
+      const { error } = mode === 'signup'
+        ? await supabaseClient.auth.signUp({ email, password })
+        : await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      closeAuthModal();
+    } catch (err) {
+      errEl.textContent = err.message || 'Something went wrong. Please try again.';
+      errEl.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function handleLogout(){
+    await supabaseClient.auth.signOut();
+  }
+
+  function trialDaysLeft(trialStartedAt){
+    const elapsedDays = (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24);
+    return Math.max(0, Math.ceil(7 - elapsedDays));
+  }
+
+  function renderNavAuth(){
+    const container = document.getElementById('navcta');
+    if (!container) return;
+
+    if (!currentSession){
+      container.innerHTML = `
+        <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('login');">Log in</a>
+        <a class="btn btn-primary btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start free trial</a>
+      `;
+      return;
+    }
+
+    let badge;
+    if (currentProfile && currentProfile.subscription_status === 'active'){
+      badge = '<span class="trial-badge trial-badge-pro">Pro</span>';
+    } else {
+      const daysLeft = currentProfile ? trialDaysLeft(currentProfile.trial_started_at) : null;
+      badge = (daysLeft !== null && daysLeft > 0)
+        ? `<span class="trial-badge">${daysLeft}d left in trial</span>`
+        : '<span class="trial-badge trial-badge-expired">Trial ended</span>';
+    }
+
+    container.innerHTML = `
+      ${badge}
+      <span style="font-size:13.5px; color:var(--ink-soft);">${escapeHtml(currentSession.user.email)}</span>
+      <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); handleLogout();">Log out</a>
+    `;
+  }
+
+  async function loadProfile(userId){
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    if (error){
+      console.error('loadProfile error', error);
+      return null;
+    }
+    return data;
+  }
+
+  function applyResumeSnapshot(snapshot){
+    suppressResumeChange = true;
+    document.getElementById('in-name').value = snapshot.name || '';
+    document.getElementById('in-role').value = snapshot.role || '';
+    document.getElementById('in-contact').value = snapshot.contact || '';
+    document.getElementById('in-summary').value = snapshot.summary || '';
+    document.getElementById('in-edu').value = snapshot.edu || '';
+    document.getElementById('in-skills').value = (snapshot.skills || []).join(', ');
+
+    document.querySelectorAll('.exp-entry').forEach(el => el.remove());
+    expCount = 0;
+    if (snapshot.entries && snapshot.entries.length){
+      snapshot.entries.forEach(entry => addExperience(entry));
+    } else {
+      addExperience();
+    }
+    renderResume();
+    suppressResumeChange = false;
+  }
+
+  async function loadResumeFromDb(userId){
+    const { data, error } = await supabaseClient.from('resumes').select('data').eq('user_id', userId).maybeSingle();
+    if (error){
+      console.error('loadResumeFromDb error', error);
+      return;
+    }
+    if (data && data.data && Object.keys(data.data).length) applyResumeSnapshot(data.data);
+  }
+
+  let resumeSaveTimer = null;
+  function scheduleResumeSave(){
+    if (!supabaseReady || !currentSession || suppressResumeChange) return;
+    clearTimeout(resumeSaveTimer);
+    resumeSaveTimer = setTimeout(saveResumeToDb, 800);
+  }
+
+  async function saveResumeToDb(){
+    if (!currentSession) return;
+    const snapshot = getResumeSnapshot();
+    const { error } = await supabaseClient.from('resumes').upsert({
+      user_id: currentSession.user.id,
+      data: snapshot,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.error('saveResumeToDb error', error);
+  }
+
+  async function startCheckout(plan, btn){
+    if (!currentSession){
+      openAuthModal('signup');
+      return;
+    }
+    const original = btn.textContent;
+    btn.textContent = 'Redirecting…';
+    btn.style.pointerEvents = 'none';
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + currentSession.access_token,
+        },
+        body: JSON.stringify({ plan }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || ('Checkout failed (' + res.status + ')'));
+      window.location.href = payload.url;
+    } catch (err) {
+      alert('Could not start checkout: ' + err.message);
+      btn.textContent = original;
+      btn.style.pointerEvents = '';
+    }
+  }
+
+  function showCheckoutReturnBanner(){
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get('checkout');
+    if (!outcome) return;
+    const banner = document.getElementById('checkout-banner');
+    if (outcome === 'success'){
+      banner.textContent = "You're on LandIt Pro! It can take a few seconds for your account to update.";
+      banner.classList.remove('cancel');
+    } else if (outcome === 'cancel'){
+      banner.textContent = 'Checkout was canceled — no charge was made.';
+      banner.classList.add('cancel');
+    } else {
+      return;
+    }
+    banner.hidden = false;
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  if (supabaseReady){
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      currentSession = session;
+      renderNavAuth();
+      if (session){
+        currentProfile = await loadProfile(session.user.id);
+        renderNavAuth();
+        await loadResumeFromDb(session.user.id);
+      } else {
+        currentProfile = null;
+      }
+    });
+
+    (async function initAuth(){
+      const { data } = await supabaseClient.auth.getSession();
+      currentSession = data.session;
+      renderNavAuth();
+      if (currentSession){
+        currentProfile = await loadProfile(currentSession.user.id);
+        renderNavAuth();
+        await loadResumeFromDb(currentSession.user.id);
+      }
+    })();
+  }
+
+  showCheckoutReturnBanner();
 </script>
 
 </body>
