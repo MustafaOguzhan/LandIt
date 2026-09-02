@@ -1,7 +1,7 @@
 # LandIt
 
-AI-powered resume builder + AI mock interview practice, with accounts and a
-7-day free trial → paid monthly or yearly subscription.
+AI-powered resume builder, AI mock interview practice, and real job search,
+with accounts and a 7-day free trial → paid monthly or yearly subscription.
 
 ## Deploying (Vercel)
 
@@ -11,12 +11,13 @@ AI-powered resume builder + AI mock interview practice, with accounts and a
    - `ANTHROPIC_API_KEY` — get one at [console.anthropic.com](https://console.anthropic.com). Powers the AI mock interview. Without it, the interview chat still loads but shows a clear "needs an API key" message instead of a real response.
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from a Supabase project (see below). Used server-side only, for Stripe webhook writes.
    - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MONTHLY`, `STRIPE_PRICE_ID_YEARLY` — from a Stripe account (see below).
+   - `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` — from an Adzuna account (see below). Powers job search. Without it, the Job Search section shows a clear "needs an API key" message instead of results.
 4. Click **Deploy**. Every future push to this branch redeploys automatically.
 
 The site itself (`landit.html`) is served at `/`. `/api/interview`,
-`/api/create-checkout-session`, and `/api/stripe-webhook` are small
-serverless functions that keep all secret keys on the server — none of them
-are ever exposed to the browser.
+`/api/create-checkout-session`, `/api/stripe-webhook`, and `/api/jobs` are
+small serverless functions that keep all secret keys on the server — none of
+them are ever exposed to the browser.
 
 ### Setting up Supabase (accounts + saved resumes)
 
@@ -60,6 +61,14 @@ are ever exposed to the browser.
 Note: the 7-day free trial requires no credit card by design — it's tracked
 in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe only gets
 involved once someone clicks "Continue to LandIt Pro" and actually subscribes.
+
+### Setting up Adzuna (real job search)
+
+1. Create a free account at [developer.adzuna.com](https://developer.adzuna.com).
+2. Your dashboard shows an **Application ID** and **Application Key**
+   immediately — no approval wait. Set them as `ADZUNA_APP_ID` and
+   `ADZUNA_APP_KEY` in Vercel.
+3. Redeploy so Vercel picks up the new environment variables.
 
 ## Local development
 
