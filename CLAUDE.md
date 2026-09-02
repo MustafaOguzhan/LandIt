@@ -55,8 +55,9 @@ standard and legal in this market — dozens of competitors exist.
 ## Current prototype state
 A single-file frontend (`landit.html`) plus a few serverless backend
 endpoints (`api/interview.js` for the AI interview, `api/create-checkout-
-session.js` and `api/stripe-webhook.js` for payments) exist in this project,
-backed by a Supabase project for auth/data (`supabase/schema.sql`). Honest
+session.js` and `api/stripe-webhook.js` for payments, `api/jobs.js` for job
+search) exist in this project, backed by a Supabase project for auth/data
+(`supabase/schema.sql`). Honest
 status of each feature:
 
 | Feature | Status |
@@ -66,7 +67,7 @@ status of each feature:
 | ATS score | **Real, heuristic-based.** Client-side JS in `landit.html` scores Content/Impact/Keywords/Formatting from the actual builder fields (field completeness, strong-verb + metric detection in bullets, structural sanity checks) and blends them into the overall score; the ring/breakdown bars update live as you type. No backend or AI call. |
 | Keyword targeting | **Real, heuristic-based.** Extracts candidate phrases from the pasted job description (clause-boundary splitting + filler-word trimming) and checks each against the resume with word-boundary matching; chips update live. Same computation feeds the ATS score's "Keywords" sub-score. |
 | AI mock interview | **Real text chat, wired to Claude.** `api/interview.js` (Vercel serverless function) holds the Anthropic API key server-side and returns the interviewer's next question plus live clarity/structure/specificity/confidence scores as JSON; the frontend chat log and score bars in `landit.html` are driven by real responses, not scripted ones. Requires `ANTHROPIC_API_KEY` to be set in the deployment's environment variables to actually respond (see README) — without it, the UI shows a clear "needs to be deployed with a key" error instead of failing silently. Voice input/output is not built yet — text only. |
-| Job search listings | **Fake/demo only.** Three static hardcoded jobs. Needs a real job data source or manual entry system. |
+| Job search listings | **Real, via the Adzuna API.** `api/jobs.js` proxies to Adzuna (keeps the app_id/app_key secret) given a role/keywords + optional location; results replace the old 3 static cards. Match % is computed client-side, word-level, against the resume — deliberately not phrase-level like the Keyword Targeting section, since real job-posting prose rarely repeats resume wording verbatim and phrase matching under-scored obvious fits during testing. Needs an Adzuna account (free, see README). |
 | Templates section | Visual only — swatches, not real selectable/exportable templates yet. |
 | User accounts / auth | **Real, via Supabase Auth.** Email/password sign up and log in (modal on any "Log in" / "Start free trial" click). Session persists across visits. `supabase/schema.sql` defines the `profiles` table (auto-created per user via a DB trigger) with RLS so a user can only ever read/write their own row. Needs a real Supabase project's URL/anon key filled in (see README) — the SQL migration is written but has to be run once against that project. |
 | Payments / subscription (7-day trial → $24/mo or $99/yr) | **Real, via Stripe.** The 7-day trial requires no card — it's tracked purely in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe is only involved when a user picks "Continue with Monthly" or "Continue with Yearly": `api/create-checkout-session.js` takes a `plan` ('monthly'/'yearly'), maps it to the matching Stripe Price ID, and creates a real Checkout Session; `api/stripe-webhook.js` verifies Stripe's webhook signature and updates `profiles.subscription_status` (active/past_due/canceled) so the nav trial/Pro badge reflects reality. Needs a Stripe account + product with both prices + webhook configured (see README). Feature-gating specific builder actions by subscription status (e.g. blocking the builder once the trial expires) is not implemented yet — trial/Pro status is tracked and displayed, but nothing is hard-blocked on it. |
@@ -83,7 +84,8 @@ status of each feature:
    README); optionally add hard feature-gating by subscription status later.
 4. ✅ Real ATS scoring + keyword targeting logic — heuristic-based,
    client-side, no backend needed (see status table above).
-5. Real job search data.
+5. ✅ Real job search data — Adzuna API, see status table above. Remaining:
+   create an Adzuna account and set ADZUNA_APP_ID/ADZUNA_APP_KEY (README).
 
 ## Frontend design quality rules
 Apply these whenever writing or editing any frontend code for LandIt:
