@@ -178,6 +178,15 @@
   .field textarea{resize:vertical; min-height:76px;}
   .field input:focus, .field textarea:focus{outline:2px solid var(--ink-soft); outline-offset:1px;}
 
+  .example-select{
+    padding:9px 14px; border:1px solid var(--line); border-radius:var(--radius-s);
+    font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink); background:#fff;
+    cursor:pointer; transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .example-select:hover{border-color:var(--ink-soft);}
+  .example-select:focus-visible{outline:none; border-color:var(--forest); box-shadow:0 0 0 3px var(--forest-tint);}
+  .example-select:active{transform:scale(0.98);}
+
   .live-resume{padding:30px;}
   .live-resume .lname{font-family:'Fraunces',serif; font-size:24px; font-weight:600; min-height:30px;}
   .live-resume .lrole{color:var(--teal); font-weight:600; font-size:14px; margin-top:2px; min-height:18px;}
@@ -565,6 +574,16 @@
       <span class="kicker" style="color:var(--plum);">RESUME BUILDER</span>
       <h2>Type on the left, watch it land on the right.</h2>
       <p>This one actually works — fill it in, then download a clean, ATS-friendly PDF. No account needed to try it.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+      <span style="font-size:13px; color:var(--ink-soft); font-weight:600;">New here? See it filled in:</span>
+      <select id="example-select" class="example-select" onchange="fillExampleResume(this.value); this.value='';">
+        <option value="" selected disabled>Choose a profession…</option>
+        <option value="engineer">Software Engineer</option>
+        <option value="marketing">Marketing Manager</option>
+        <option value="nurse">Registered Nurse</option>
+        <option value="sales">Sales Representative</option>
+      </select>
     </div>
     <div class="builder-grid">
       <div class="card" id="builder-form">
@@ -1724,6 +1743,139 @@
     }
     renderResume();
     suppressResumeChange = false;
+  }
+
+  // Lets a first-time visitor see a fully filled-in resume (and how each
+  // template looks with real content) before typing anything of their own.
+  const EXAMPLE_RESUMES = {
+    engineer: {
+      template: 'fieldwork',
+      data: {
+        name: 'Jordan Ellis',
+        role: 'Software Engineer',
+        contact: 'jordan.ellis@email.com · Austin, TX · linkedin.com/in/jordanellis',
+        summary: 'Backend-focused software engineer with 5 years building and scaling distributed systems. Comfortable owning a service from design through on-call, and known for shipping fast without breaking things.',
+        edu: 'B.S. Computer Science, University of Texas at Austin, 2019',
+        skills: ['Python', 'Go', 'PostgreSQL', 'AWS', 'Docker', 'Kubernetes', 'REST APIs', 'CI/CD'],
+        entries: [
+          {
+            title: 'Senior Software Engineer', company: 'Northlake Systems', start: '2022', end: 'Present',
+            bullets: [
+              'Led the migration of a monolithic billing service to microservices, cutting average response time by 40%',
+              'Built a rate-limiting layer that reduced downstream API errors by 65% during peak traffic',
+              'Mentored 3 junior engineers and established a code review process that cut production bugs by 30%',
+            ],
+          },
+          {
+            title: 'Software Engineer', company: 'Beacon Analytics', start: '2019', end: '2022',
+            bullets: [
+              'Developed a real-time data pipeline processing 2M events per day using Kafka and Go',
+              'Reduced infrastructure costs by 22% by rightsizing AWS resources and automating scale-down',
+              'Shipped a customer-facing dashboard used by over 500 clients weekly',
+            ],
+          },
+        ],
+      },
+    },
+    marketing: {
+      template: 'clearline',
+      data: {
+        name: 'Alicia Moreno',
+        role: 'Product Marketing Manager',
+        contact: 'alicia.moreno@email.com · Seattle, WA · linkedin.com/in/aliciamoreno',
+        summary: 'Product marketer with 6 years driving go-to-market strategy for B2B SaaS products, from positioning through launch. Strong collaborator across sales, design, and product teams.',
+        edu: 'B.S. Marketing, University of Washington, 2019',
+        skills: ['Go-to-market strategy', 'Positioning', 'Sprint planning', 'SQL', 'Figma', 'A/B testing', 'Content strategy'],
+        entries: [
+          {
+            title: 'Senior Product Marketing Manager', company: 'Northwind Digital', start: '2022', end: 'Present',
+            bullets: [
+              'Led go-to-market for a repositioning that grew qualified pipeline by 30% in two quarters',
+              'Launched 4 major product releases, coordinating messaging across sales, support, and design',
+              'Increased trial-to-paid conversion by 18% through targeted onboarding email sequences',
+            ],
+          },
+          {
+            title: 'Product Marketing Manager', company: 'Harbor Cloud', start: '2019', end: '2022',
+            bullets: [
+              "Built the company's first competitive battlecard program, adopted by 40+ sales reps",
+              'Drove a 25% increase in webinar attendance by redesigning the promotion funnel',
+              'Partnered with product to launch a self-serve tier that added $1.2M in new ARR',
+            ],
+          },
+        ],
+      },
+    },
+    nurse: {
+      template: 'groundwork',
+      data: {
+        name: 'Maria Chen',
+        role: 'Registered Nurse',
+        contact: 'maria.chen@email.com · Denver, CO · linkedin.com/in/mariachen-rn',
+        summary: 'Compassionate registered nurse with 7 years of experience in fast-paced med-surg and emergency settings. Skilled at triage, patient education, and coordinating care across multidisciplinary teams.',
+        edu: 'B.S. Nursing, University of Colorado Denver, 2017',
+        skills: ['Patient assessment', 'EHR/Epic', 'IV therapy', 'Triage', 'Patient education', 'HIPAA compliance', 'BLS/ACLS certified'],
+        entries: [
+          {
+            title: 'Charge Nurse', company: 'Saint Vincent Medical Center', start: '2021', end: 'Present',
+            bullets: [
+              'Managed a 24-bed med-surg unit, coordinating care for up to 30 patients per shift',
+              'Reduced average patient wait time by 15% by redesigning the intake triage process',
+              'Trained 12 new nursing hires on unit protocols and electronic charting standards',
+            ],
+          },
+          {
+            title: 'Staff Nurse', company: 'Riverside General Hospital', start: '2017', end: '2021',
+            bullets: [
+              'Delivered direct care to an average of 6 patients per shift in a high-acuity emergency department',
+              'Improved patient satisfaction scores by 20% through a bedside communication initiative',
+              'Coordinated medication administration and treatment plans for over 1,000 patients annually with zero reported errors',
+            ],
+          },
+        ],
+      },
+    },
+    sales: {
+      template: 'runway',
+      data: {
+        name: 'Devon Carter',
+        role: 'Sales Representative',
+        contact: 'devon.carter@email.com · Chicago, IL · linkedin.com/in/devoncarter',
+        summary: 'Results-driven sales representative with 4 years of B2B SaaS sales experience, consistently exceeding quota through consultative selling and strong pipeline discipline.',
+        edu: 'B.A. Business Administration, DePaul University, 2020',
+        skills: ['Consultative selling', 'Salesforce', 'Cold outreach', 'Negotiation', 'Pipeline management', 'Territory planning'],
+        entries: [
+          {
+            title: 'Account Executive', company: 'Brightline Software', start: '2022', end: 'Present',
+            bullets: [
+              'Exceeded quarterly quota by an average of 22% over 6 consecutive quarters',
+              'Won $1.4M in new business by building relationships with mid-market and enterprise accounts',
+              'Negotiated multi-year contracts that increased average deal size by 35%',
+            ],
+          },
+          {
+            title: 'Sales Development Representative', company: 'Fenwick Tech', start: '2020', end: '2022',
+            bullets: [
+              'Generated over 300 qualified opportunities through targeted cold outreach and LinkedIn prospecting',
+              'Achieved 130% of quota in first year, ranking top 3 out of a 20-person SDR team',
+              'Secured 45 new logo meetings per quarter through a personalized outbound cadence',
+            ],
+          },
+        ],
+      },
+    },
+  };
+
+  function fillExampleResume(key){
+    const example = EXAMPLE_RESUMES[key];
+    if (!example) return;
+    const current = getResumeSnapshot();
+    const hasContent = current.name || current.role || current.contact || current.summary ||
+      current.edu || current.skills.length ||
+      current.entries.some(e => e.title || e.company || e.bullets.length);
+    if (hasContent && !confirm("This will replace what you've already entered with an example resume. Continue?")) return;
+    applyResumeSnapshot({ ...example.data, template: example.template });
+    document.getElementById('builder-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function loadResumeFromDb(userId){
