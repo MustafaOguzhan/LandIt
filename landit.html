@@ -200,6 +200,16 @@
   .lheader-text{flex:1; min-width:0;}
   .lphoto{width:86px; height:86px; border-radius:50%; object-fit:cover; flex:0 0 auto; border:1px solid var(--line);}
 
+  .suggest-wrap{position:relative;}
+  .suggest-list{
+    position:absolute; top:100%; left:0; right:0; z-index:20; margin-top:6px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-s);
+    box-shadow:var(--shadow); max-height:264px; overflow-y:auto;
+  }
+  .suggest-item{padding:10px 14px; font-size:14px; color:var(--ink); cursor:pointer;}
+  .suggest-item:hover, .suggest-item.active{background:var(--paper-raised);}
+  .suggest-item mark{background:var(--forest-tint); color:var(--forest-deep); font-weight:600; border-radius:2px;}
+
   .example-select{
     padding:9px 14px; border:1px solid var(--line); border-radius:var(--radius-s);
     font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink); background:#fff;
@@ -754,9 +764,10 @@
     </div>
     <div class="card" style="margin-bottom:24px;">
       <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
-        <div class="field" style="flex:1; min-width:200px; margin-bottom:0;">
+        <div class="field suggest-wrap" style="flex:1; min-width:200px; margin-bottom:0;">
           <label for="job-query">Role or keywords</label>
-          <input id="job-query" type="text" placeholder="e.g. Product Marketing Manager">
+          <input id="job-query" type="text" placeholder="e.g. Product Marketing Manager" autocomplete="off">
+          <div id="job-query-suggestions" class="suggest-list" hidden></div>
         </div>
         <div class="field" style="min-width:170px; margin-bottom:0;">
           <label for="job-country">Country</label>
@@ -1349,13 +1360,42 @@
     'scaled','won','secured','exceeded','saved','accelerated','pioneered','transformed','redesigned',
     'authored','launched','partnered','shipped']);
 
+  // Real job postings are mostly company/benefits/soft-skill boilerplate, not a clean
+  // skills list - "opportunity," "passionate," "collaborative," "benefits package" etc.
+  // show up in nearly every posting regardless of role and were never anything a resume
+  // could meaningfully "match." Filtering them out here (shared by the Keyword Targeting
+  // chips and the Job Search match %) means both scores reflect genuine skill/requirement
+  // overlap instead of being diluted by prose that was never a real requirement.
   const KEYWORD_STOPWORDS = new Set(['a','an','the','and','or','but','if','then','so','of','to','in',
     'on','for','with','at','by','from','as','is','are','was','were','be','been','being','this','that',
     'these','those','it','its','you','your','we','our','they','their','he','she','his','her','will',
     'would','can','could','should','must','shall','may','might','not','no','do','does','did','have',
     'has','had','i','me','my','us','who','whom','which','what','when','where','why','how','job','role',
-    'position','company','team','years','year','experience','looking','seeking','candidate','ideal',
-    'strong','excellent','ability','skills','including','etc']);
+    'position','company','team','years','year','experience','looking','seeking','candidate','candidates',
+    'ideal','strong','excellent','ability','skills','including','etc',
+    // job-posting process/meta
+    'opportunity','opportunities','vacancy','vacancies','apply','application','applications','applicant',
+    'applicants','hire','hiring','join','joining','opening','openings',
+    // company/culture/benefits boilerplate
+    'environment','culture','diverse','diversity','inclusive','inclusion','equal','employer','employment',
+    'benefits','package','competitive','salary','equity','compensation','pto','leave','parental','remote',
+    'hybrid','onsite','flexible','perks','office','offices',
+    // soft-skill / generic-quality fluff
+    'passionate','passion','dynamic','innovative','innovation','collaborate','collaborative',
+    'collaboration','communication','communicate','proficiency','proficient','familiarity','familiar',
+    'preferred','requirements','requirement','responsibilities','responsible','responsibility','duties',
+    'qualifications','qualified','plus','bonus','mentor','mentoring','growth','career','development',
+    'professional','fast','paced',
+    // generic verbs/connectors
+    'work','working','help','helping','build','building','create','creating','ensure','ensuring',
+    'provide','providing','across','within','into','more','most','other','others','well','also','such',
+    'per','any','all','some','each','every','make','making','take','taking','get','getting','new',
+    // more job-ad filler that survived the first pass (flattery adjectives, "what we
+    // offer" benefits-plan language, and generic nouns that appear in nearly every
+    // posting regardless of what's actually required)
+    'talented','growing','closely','fellow','participate','similar','offer','offers','offering',
+    'comprehensive','health','dental','vision','generous','celebrate','committed','employees','proud',
+    'solutions','customers','issues','teams']);
 
   function getResumeSnapshot(){
     const val = (id) => document.getElementById(id).value.trim();
@@ -1642,6 +1682,152 @@
   // independently against the resume with the same word-boundary
   // matching (keywordAppears, from the ATS engine above).
 
+  // ---- "Role or keywords" suggestions ----
+  //
+  // Adzuna has no title-autocomplete endpoint (its API surface is just
+  // search/histogram/top_companies/categories/geodata/history), and
+  // calling live search on every keystroke would burn through its free
+  // 1,000-calls/month tier fast. This is a static, curated list of common
+  // job titles spanning many industries - filtered entirely client-side,
+  // same "real but heuristic, no API needed" approach as the ATS engine.
+  const JOB_TITLE_SUGGESTIONS = [
+    'Software Engineer','Senior Software Engineer','Frontend Developer','Backend Developer',
+    'Full Stack Developer','Mobile Developer','DevOps Engineer','Site Reliability Engineer',
+    'Data Engineer','Data Scientist','Data Analyst','Machine Learning Engineer','QA Engineer',
+    'Test Engineer','Systems Administrator','Network Engineer','Security Engineer','Cloud Engineer',
+    'Database Administrator','IT Support Specialist','Technical Support Engineer','Solutions Architect',
+    'Engineering Manager','Product Manager','Technical Product Manager','UX Designer','UI Designer',
+    'Product Designer','UX Researcher',
+    'Marketing Manager','Product Marketing Manager','Digital Marketing Manager','Content Marketing Manager',
+    'Social Media Manager','SEO Specialist','SEM Specialist','Marketing Coordinator','Brand Manager',
+    'Email Marketing Specialist','Growth Marketing Manager','Marketing Analyst','Communications Manager',
+    'Public Relations Manager','Copywriter','Content Writer','Content Strategist',
+    'Sales Representative','Account Executive','Account Manager','Business Development Representative',
+    'Business Development Manager','Sales Manager','Sales Development Representative',
+    'Inside Sales Representative','Regional Sales Manager','Territory Manager','Customer Success Manager',
+    'Key Account Manager',
+    'Customer Support Specialist','Customer Service Representative','Technical Support Representative',
+    'Help Desk Technician','Support Team Lead',
+    'Operations Manager','Operations Coordinator','Office Manager','Administrative Assistant',
+    'Executive Assistant','Project Manager','Program Manager','Project Coordinator','Business Analyst',
+    'Supply Chain Analyst','Logistics Coordinator','Procurement Specialist','Facilities Manager',
+    'Accountant','Senior Accountant','Staff Accountant','Financial Analyst','Financial Controller',
+    'Bookkeeper','Payroll Specialist','Accounts Payable Specialist','Accounts Receivable Specialist',
+    'Tax Accountant','Auditor','Finance Manager','Investment Analyst','Credit Analyst',
+    'Human Resources Manager','HR Generalist','HR Coordinator','Recruiter','Talent Acquisition Specialist',
+    'People Operations Manager','Training and Development Specialist','Compensation and Benefits Analyst',
+    'HR Business Partner',
+    'Registered Nurse','Licensed Practical Nurse','Nurse Practitioner','Medical Assistant',
+    'Physician Assistant','Pharmacist','Pharmacy Technician','Physical Therapist','Occupational Therapist',
+    'Dental Hygienist','Medical Receptionist','Clinical Research Coordinator','Radiologic Technologist',
+    'Home Health Aide','Caregiver',
+    'Teacher','Elementary School Teacher','High School Teacher','Substitute Teacher','Teaching Assistant',
+    'Tutor','Instructional Designer','School Counselor','Principal','Professor','Adjunct Instructor',
+    'Early Childhood Educator',
+    'Retail Sales Associate','Store Manager','Assistant Store Manager','Cashier','Barista','Server',
+    'Bartender','Restaurant Manager','Chef','Line Cook','Hotel Front Desk Agent','Housekeeper',
+    'Event Coordinator','Event Planner',
+    'Electrician','Plumber','HVAC Technician','Carpenter','Welder','Automotive Technician','Machinist',
+    'Construction Manager','Maintenance Technician','Warehouse Associate','Forklift Operator',
+    'Truck Driver','Delivery Driver',
+    'Paralegal','Legal Assistant','Attorney','Legal Secretary','Compliance Officer','Contract Manager',
+    'Graphic Designer','Video Editor','Photographer','Illustrator','Art Director','Journalist','Editor',
+    'Social Media Coordinator','Animator',
+    'General Manager','Chief Executive Officer','Chief Operating Officer','Chief Financial Officer',
+    'Chief Marketing Officer','Chief Technology Officer','Director of Operations','Director of Marketing',
+    'Director of Sales','Vice President of Sales','Vice President of Engineering',
+  ];
+
+  let jobSuggestMatches = [];
+  let jobSuggestActiveIndex = -1;
+
+  function filterJobTitleSuggestions(query){
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const startsWith = [];
+    const contains = [];
+    JOB_TITLE_SUGGESTIONS.forEach(title => {
+      const lower = title.toLowerCase();
+      if (lower.startsWith(q)) startsWith.push(title);
+      else if (lower.includes(q)) contains.push(title);
+    });
+    return [...startsWith, ...contains].slice(0, 8);
+  }
+
+  function highlightMatch(title, query){
+    const idx = title.toLowerCase().indexOf(query.trim().toLowerCase());
+    if (idx === -1) return escapeHtml(title);
+    return escapeHtml(title.slice(0, idx)) + '<mark>' + escapeHtml(title.slice(idx, idx + query.trim().length)) + '</mark>' + escapeHtml(title.slice(idx + query.trim().length));
+  }
+
+  function renderJobSuggestions(query){
+    const list = document.getElementById('job-query-suggestions');
+    if (jobSuggestMatches.length === 0){
+      list.hidden = true;
+      list.innerHTML = '';
+      return;
+    }
+    list.innerHTML = jobSuggestMatches.map((title, i) => `
+      <div class="suggest-item${i === jobSuggestActiveIndex ? ' active' : ''}" data-index="${i}" onmousedown="event.preventDefault(); selectJobSuggestion(${i});">
+        ${highlightMatch(title, query)}
+      </div>
+    `).join('');
+    list.hidden = false;
+  }
+
+  function hideJobSuggestions(){
+    jobSuggestMatches = [];
+    jobSuggestActiveIndex = -1;
+    const list = document.getElementById('job-query-suggestions');
+    list.hidden = true;
+    list.innerHTML = '';
+  }
+
+  function selectJobSuggestion(index){
+    const title = jobSuggestMatches[index];
+    if (!title) return;
+    document.getElementById('job-query').value = title;
+    hideJobSuggestions();
+  }
+
+  function handleJobQueryInput(){
+    const query = document.getElementById('job-query').value;
+    jobSuggestMatches = filterJobTitleSuggestions(query);
+    jobSuggestActiveIndex = -1;
+    renderJobSuggestions(query);
+  }
+
+  function handleJobQueryKeydown(e){
+    if (jobSuggestMatches.length > 0 && !document.getElementById('job-query-suggestions').hidden){
+      if (e.key === 'ArrowDown'){
+        e.preventDefault();
+        jobSuggestActiveIndex = (jobSuggestActiveIndex + 1) % jobSuggestMatches.length;
+        renderJobSuggestions(document.getElementById('job-query').value);
+        return;
+      }
+      if (e.key === 'ArrowUp'){
+        e.preventDefault();
+        jobSuggestActiveIndex = (jobSuggestActiveIndex - 1 + jobSuggestMatches.length) % jobSuggestMatches.length;
+        renderJobSuggestions(document.getElementById('job-query').value);
+        return;
+      }
+      if (e.key === 'Escape'){
+        hideJobSuggestions();
+        return;
+      }
+      if (e.key === 'Enter' && jobSuggestActiveIndex >= 0){
+        e.preventDefault();
+        selectJobSuggestion(jobSuggestActiveIndex);
+        return;
+      }
+    }
+    if (e.key === 'Enter'){ e.preventDefault(); hideJobSuggestions(); searchJobs(); }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.suggest-wrap')) hideJobSuggestions();
+  });
+
   function safeJobUrl(url){
     return /^https?:\/\//i.test(url || '') ? url : '#';
   }
@@ -1729,9 +1915,8 @@
     }
   }
 
-  document.getElementById('job-query').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter'){ e.preventDefault(); searchJobs(); }
-  });
+  document.getElementById('job-query').addEventListener('input', handleJobQueryInput);
+  document.getElementById('job-query').addEventListener('keydown', handleJobQueryKeydown);
   document.getElementById('job-location').addEventListener('keydown', (e) => {
     if (e.key === 'Enter'){ e.preventDefault(); searchJobs(); }
   });
@@ -2133,7 +2318,7 @@
         contact: 'jordan.ellis@email.com · Austin, TX · linkedin.com/in/jordanellis',
         summary: 'Backend-focused software engineer with 5 years building and scaling distributed systems. Comfortable owning a service from design through on-call, and known for shipping fast without breaking things.',
         edu: 'B.S. Computer Science, University of Texas at Austin, 2019',
-        skills: ['Python', 'Go', 'PostgreSQL', 'AWS', 'Docker', 'Kubernetes', 'REST APIs', 'CI/CD'],
+        skills: ['Python', 'Go', 'SQL', 'PostgreSQL', 'AWS', 'Cloud infrastructure', 'Docker', 'Kubernetes', 'REST APIs', 'Microservices', 'CI/CD', 'Git', 'System design', 'Agile'],
         entries: [
           {
             title: 'Senior Software Engineer', company: 'Northlake Systems', start: 'Jun 2022', end: 'Present',
@@ -2162,7 +2347,7 @@
         contact: 'alicia.moreno@email.com · Seattle, WA · linkedin.com/in/aliciamoreno',
         summary: 'Product marketer with 6 years driving go-to-market strategy for B2B SaaS products, from positioning through launch. Strong collaborator across sales, design, and product teams.',
         edu: 'B.S. Marketing, University of Washington, 2019',
-        skills: ['Go-to-market strategy', 'Positioning', 'Sprint planning', 'SQL', 'Figma', 'A/B testing', 'Content strategy'],
+        skills: ['Go-to-market strategy', 'Positioning', 'Sprint planning', 'SQL', 'Figma', 'A/B testing', 'Content strategy', 'Salesforce', 'HubSpot', 'CRM', 'Demand generation', 'Marketing analytics'],
         entries: [
           {
             title: 'Senior Product Marketing Manager', company: 'Northwind Digital', start: 'Mar 2022', end: 'Present',
@@ -2191,7 +2376,7 @@
         contact: 'maria.chen@email.com · Denver, CO · linkedin.com/in/mariachen-rn',
         summary: 'Compassionate registered nurse with 7 years of experience in fast-paced med-surg and emergency settings. Skilled at triage, patient education, and coordinating care across multidisciplinary teams.',
         edu: 'B.S. Nursing, University of Colorado Denver, 2017',
-        skills: ['Patient assessment', 'EHR/Epic', 'IV therapy', 'Triage', 'Patient education', 'HIPAA compliance', 'BLS/ACLS certified'],
+        skills: ['Patient assessment', 'Vital signs monitoring', 'EHR/Epic', 'IV therapy', 'Medication administration', 'Triage', 'Acute care', 'Critical thinking', 'Case coordination', 'Patient education', 'HIPAA compliance', 'BLS/ACLS certified'],
         entries: [
           {
             title: 'Charge Nurse', company: 'Saint Vincent Medical Center', start: 'Feb 2021', end: 'Present',
@@ -2220,7 +2405,7 @@
         contact: 'devon.carter@email.com · Chicago, IL · linkedin.com/in/devoncarter',
         summary: 'Results-driven sales representative with 4 years of B2B SaaS sales experience, consistently exceeding quota through consultative selling and strong pipeline discipline.',
         edu: 'B.A. Business Administration, DePaul University, 2020',
-        skills: ['Consultative selling', 'Salesforce', 'Cold outreach', 'Negotiation', 'Pipeline management', 'Territory planning'],
+        skills: ['Consultative selling', 'Salesforce', 'CRM', 'Cold outreach', 'Product demos', 'Lead generation', 'Closing', 'Negotiation', 'Pipeline management', 'Territory planning'],
         entries: [
           {
             title: 'Account Executive', company: 'Brightline Software', start: 'Jan 2022', end: 'Present',
