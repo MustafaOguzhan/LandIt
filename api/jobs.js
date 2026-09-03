@@ -4,6 +4,12 @@
 // server-side. Returns a normalized, minimal job list; the frontend
 // computes a real match % against the viewer's resume using the same
 // keyword-matching engine as the ATS score / keyword targeting sections.
+//
+// Requires an active trial/subscription (see api/_lib/access.js) - this is
+// a paid-tier feature, and the client-side gate alone doesn't stop someone
+// from calling this endpoint directly.
+
+const { requireActiveAccess } = require('./_lib/access');
 
 const ADZUNA_COUNTRY = 'us';
 const RESULTS_PER_PAGE = 12;
@@ -13,6 +19,8 @@ module.exports = async (req, res) => {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
+
+  if (!(await requireActiveAccess(req, res))) return;
 
   const { ADZUNA_APP_ID, ADZUNA_APP_KEY } = process.env;
   if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) {

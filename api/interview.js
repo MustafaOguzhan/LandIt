@@ -4,6 +4,12 @@
 // The client sends the running conversation; this function asks Claude to
 // play interviewer, score the candidate's latest answer, and return both
 // as strict JSON so the frontend can drive the chat log and the score bars.
+//
+// Requires an active trial/subscription (see api/_lib/access.js) - this is
+// a paid-tier feature, and the client-side gate alone doesn't stop someone
+// from calling this endpoint directly.
+
+const { requireActiveAccess } = require('./_lib/access');
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TURNS = 12; // cap history so a single request can't balloon token usage
@@ -83,6 +89,8 @@ module.exports = async (req, res) => {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
+
+  if (!(await requireActiveAccess(req, res))) return;
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

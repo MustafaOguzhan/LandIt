@@ -1692,12 +1692,14 @@
     try {
       const params = new URLSearchParams({ what });
       if (where) params.set('where', where);
-      const res = await fetch('/api/jobs?' + params.toString());
+      const res = await fetch('/api/jobs?' + params.toString(), {
+        headers: { 'Authorization': 'Bearer ' + (currentSession && currentSession.access_token) },
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || ('Search failed (' + res.status + ')'));
       renderJobs(data.jobs);
     } catch (err) {
-      listEl.innerHTML = `<p class="lexp-empty">Could not load jobs (${escapeHtml(err.message)}). This feature needs an Adzuna API key configured on the deployment.</p>`;
+      listEl.innerHTML = `<p class="lexp-empty">Could not load jobs (${escapeHtml(err.message)}).</p>`;
     }
   }
 
@@ -1864,7 +1866,10 @@
     try {
       const response = await fetch('/api/interview', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (currentSession && currentSession.access_token),
+        },
         body: JSON.stringify({ history: interviewHistory })
       });
       const data = await response.json();
@@ -1880,7 +1885,7 @@
       }
     } catch (err) {
       removeTypingIndicator(typingId);
-      errEl.textContent = 'Could not reach the AI interviewer (' + err.message + '). This feature needs to be deployed with an ANTHROPIC_API_KEY configured.';
+      errEl.textContent = 'Could not reach the AI interviewer (' + err.message + ').';
       errEl.style.display = 'block';
     } finally {
       interviewBusy = false;
