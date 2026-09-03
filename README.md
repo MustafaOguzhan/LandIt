@@ -70,6 +70,19 @@ involved once someone clicks "Continue to LandIt Pro" and actually subscribes.
    `ADZUNA_APP_KEY` in Vercel.
 3. Redeploy so Vercel picks up the new environment variables.
 
+Adzuna only indexes 19 countries (there's no single "world" endpoint) —
+Australia, Austria, Belgium, Brazil, Canada, France, Germany, India, Italy,
+Mexico, Netherlands, New Zealand, Poland, Singapore, South Africa, Spain,
+Switzerland, UK, and US. The Job Search section has a country dropdown
+(`api/jobs.js` validates it against that exact list server-side); searching
+a country outside it — **Norway included** — isn't possible through Adzuna
+at any settings. The closest real fix for a Norway-specific job feed is
+[NAV's official job vacancy feed](https://navikt.github.io/pam-stilling-feed/),
+which covers the large majority of public Norwegian job ads — but unlike
+Adzuna it isn't self-serve: it requires emailing
+`nav.team.arbeidsplassen@nav.no`, agreeing to their terms of use, and being
+issued a bearer token before any code can call it.
+
 ## Local development
 
 ```

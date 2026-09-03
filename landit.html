@@ -758,12 +758,37 @@
           <label for="job-query">Role or keywords</label>
           <input id="job-query" type="text" placeholder="e.g. Product Marketing Manager">
         </div>
+        <div class="field" style="min-width:170px; margin-bottom:0;">
+          <label for="job-country">Country</label>
+          <select id="job-country">
+            <option value="au">Australia</option>
+            <option value="at">Austria</option>
+            <option value="be">Belgium</option>
+            <option value="br">Brazil</option>
+            <option value="ca">Canada</option>
+            <option value="fr">France</option>
+            <option value="de">Germany</option>
+            <option value="in">India</option>
+            <option value="it">Italy</option>
+            <option value="mx">Mexico</option>
+            <option value="nl">Netherlands</option>
+            <option value="nz">New Zealand</option>
+            <option value="pl">Poland</option>
+            <option value="sg">Singapore</option>
+            <option value="za">South Africa</option>
+            <option value="es">Spain</option>
+            <option value="ch">Switzerland</option>
+            <option value="gb">United Kingdom</option>
+            <option value="us" selected>United States</option>
+          </select>
+        </div>
         <div class="field" style="flex:1; min-width:160px; margin-bottom:0;">
-          <label for="job-location">Location (optional)</label>
-          <input id="job-location" type="text" placeholder="e.g. Seattle, WA">
+          <label for="job-location">City (optional)</label>
+          <input id="job-location" type="text" placeholder="e.g. Seattle">
         </div>
         <button type="button" class="btn btn-primary" onclick="searchJobs()" style="height:44px;">Search jobs</button>
       </div>
+      <p style="font-size:12px; color:var(--ink-soft); margin-top:12px; margin-bottom:0;">Covers these 19 countries via Adzuna's job index — a few markets (including Norway) aren't in it yet.</p>
     </div>
     <div class="job-list" id="job-list">
       <p class="lexp-empty">Enter a role above (or fill in "Target role" in the Resume Builder) to see open listings.</p>
@@ -1681,6 +1706,7 @@
     }
     const what = document.getElementById('job-query').value.trim() || document.getElementById('in-role').value.trim();
     const where = document.getElementById('job-location').value.trim();
+    const country = document.getElementById('job-country').value;
     const listEl = document.getElementById('job-list');
 
     if (!what){
@@ -1690,7 +1716,7 @@
 
     listEl.innerHTML = '<p class="lexp-empty">Searching…</p>';
     try {
-      const params = new URLSearchParams({ what });
+      const params = new URLSearchParams({ what, country });
       if (where) params.set('where', where);
       const res = await fetch('/api/jobs?' + params.toString(), {
         headers: { 'Authorization': 'Bearer ' + (currentSession && currentSession.access_token) },

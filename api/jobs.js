@@ -1,9 +1,16 @@
-// Vercel serverless function — GET /api/jobs?what=<role>&where=<location>
+// Vercel serverless function — GET /api/jobs?what=<role>&where=<location>&country=<code>
 //
 // Proxies job search to the Adzuna API, keeping the app_id/app_key secret
 // server-side. Returns a normalized, minimal job list; the frontend
 // computes a real match % against the viewer's resume using the same
 // keyword-matching engine as the ATS score / keyword targeting sections.
+//
+// Adzuna indexes a fixed set of 19 countries (no single "world" endpoint) -
+// ADZUNA_COUNTRIES is that list. "country" was previously hardcoded to 'us'
+// regardless of what the caller searched for, so a location in any other
+// country silently searched US listings. It's now a required, whitelisted
+// param (validated here, not just trusted from the client) since it's
+// interpolated directly into the upstream URL path.
 //
 // Requires an active trial/subscription (see api/_lib/access.js) - this is
 // a paid-tier feature, and the client-side gate alone doesn't stop someone
@@ -11,7 +18,10 @@
 
 const { requireActiveAccess } = require('./_lib/access');
 
-const ADZUNA_COUNTRY = 'us';
+const ADZUNA_COUNTRIES = new Set([
+  'au', 'at', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'gb',
+  'in', 'it', 'mx', 'nl', 'nz', 'pl', 'sg', 'us', 'za',
+]);
 const RESULTS_PER_PAGE = 12;
 
 module.exports = async (req, res) => {
@@ -30,12 +40,17 @@ module.exports = async (req, res) => {
 
   const what = (req.query.what || '').toString().trim();
   const where = (req.query.where || '').toString().trim();
+  const country = (req.query.country || '').toString().trim().toLowerCase();
   if (!what) {
     res.status(400).json({ error: 'Missing "what" (role or keywords) query param' });
     return;
   }
   if (what.length > 200 || where.length > 200) {
     res.status(400).json({ error: 'Query is too long' });
+    return;
+  }
+  if (!ADZUNA_COUNTRIES.has(country)) {
+    res.status(400).json({ error: 'Missing or unsupported "country" - Adzuna covers: ' + Array.from(ADZUNA_COUNTRIES).sort().join(', ') });
     return;
   }
 
@@ -50,7 +65,7 @@ module.exports = async (req, res) => {
 
   try {
     const upstream = await fetch(
-      `https://api.adzuna.com/v1/api/jobs/${ADZUNA_COUNTRY}/search/1?${params.toString()}`
+      `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`
     );
     if (!upstream.ok) {
       const detail = await upstream.text();
