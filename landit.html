@@ -276,6 +276,11 @@
   .bar-fill{height:100%; background:var(--forest); border-radius:4px; transition:width .5s ease;}
   .bd-row .pct{font-size:13px; font-weight:700; color:var(--ink-soft); text-align:right;}
 
+  .suggestions-list{display:flex; flex-direction:column; gap:11px;}
+  .suggestion-row{display:flex; align-items:flex-start; gap:11px; font-size:13.5px; line-height:1.55; color:var(--ink);}
+  .suggestion-tag{flex:0 0 auto; margin-top:6px; width:7px; height:7px; border-radius:50%;}
+  .suggestions-empty{font-size:13.5px; color:var(--ink-soft);}
+
   /* Keyword targeting panel */
   .kw-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;}
   .chip{padding:6px 13px; border-radius:999px; font-size:13px; font-weight:600;}
@@ -671,6 +676,10 @@
         <div class="bd-row"><span class="lbl">Formatting</span><div class="bar-track"><div class="bar-fill" id="score-formatting-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="score-formatting-pct">0%</span></div>
       </div>
       <p style="grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); margin-top:-6px;">Ordered by how much each one weighs in a hiring manager's read — content first, formatting last. <a href="#" onclick="event.preventDefault(); replayMainRing();" style="color:var(--forest); font-weight:600;">Replay score animation ↻</a></p>
+      <div style="grid-column:1/-1; margin-top:6px; padding-top:20px; border-top:1px solid var(--line);">
+        <div style="font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:12px;">Quick wins to raise your score</div>
+        <div id="score-suggestions" class="suggestions-list"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -1226,6 +1235,85 @@
     container.innerHTML = chips.join('');
   }
 
+  // Mirrors the exact checks scoreContent/scoreImpact/scoreFormatting use,
+  // so every tip shown maps to a real point deduction rather than generic
+  // advice. Grouped by score category (same priority order as the overall
+  // blend: content, impact, keywords, formatting) and capped so the list
+  // stays a short, actionable checklist rather than a wall of text.
+  function generateSuggestions(resume, keywordInfo){
+    const contentTips = [];
+    const impactTips = [];
+    const keywordTips = [];
+    const formattingTips = [];
+    const addContent = (text) => contentTips.push({ text, color: 'var(--forest)' });
+    const addImpact = (text) => impactTips.push({ text, color: 'var(--teal)' });
+    const addKeyword = (text) => keywordTips.push({ text, color: 'var(--amber)' });
+    const addFormatting = (text) => formattingTips.push({ text, color: 'var(--plum)' });
+
+    if (!resume.name) addContent('Add your full name at the top.');
+    if (!resume.role) addContent("Add a target role so it's clear what you're applying for.");
+    if (!resume.contact) addContent('Add a contact line — email, location, and/or LinkedIn.');
+    else if (!resume.contact.includes('@')) addFormatting('Include an email address in your contact line.');
+
+    if (!resume.summary) addContent('Add a 2-3 sentence professional summary.');
+    else if (resume.summary.length < 40) addContent('Expand your summary to at least a couple of full sentences.');
+    else if (resume.summary.length > 600) addFormatting('Trim your summary — aim for a short paragraph, not a page.');
+
+    const allBullets = resume.entries.flatMap(e => e.bullets);
+
+    if (resume.entries.length === 0){
+      addContent('Add at least one work experience entry.');
+    } else {
+      const missingCompany = resume.entries.filter(e => !e.company).length;
+      if (missingCompany) addContent(`Add the company name for ${missingCompany === resume.entries.length ? 'each role' : missingCompany + ' of your roles'}.`);
+      const missingDates = resume.entries.filter(e => !e.start && !e.end).length;
+      if (missingDates) addContent(`Add start/end dates for ${missingDates === resume.entries.length ? 'each role' : missingDates + ' of your roles'}.`);
+      const missingBullets = resume.entries.filter(e => e.bullets.length === 0).length;
+      if (missingBullets) addContent(`Add at least one bullet describing what you did for ${missingBullets === resume.entries.length ? 'each role' : missingBullets + ' of your roles'}.`);
+
+      if (allBullets.length){
+        const noVerb = allBullets.filter(b => {
+          const firstWord = (b.match(/[a-zA-Z']+/) || [''])[0].toLowerCase();
+          return !STRONG_VERBS.has(firstWord);
+        }).length;
+        if (noVerb) addImpact(`${noVerb} of your ${allBullets.length} bullet${allBullets.length > 1 ? 's' : ''} ${noVerb > 1 ? "don't" : "doesn't"} open with a strong action verb (e.g. Led, Built, Reduced) — rewrite ${noVerb > 1 ? 'them' : 'it'} to start with one.`);
+        const noMetric = allBullets.filter(b => !/\d/.test(b)).length;
+        if (noMetric) addImpact(`${noMetric} of your bullets have no numbers — add a metric (%, $, or count) to show real impact.`);
+      }
+    }
+
+    if (!resume.edu) addContent('Add your education.');
+    if (resume.skills.length < 6) addContent(`List a few more skills — you have ${resume.skills.length}, aim for at least 6.`);
+
+    if (keywordInfo.score !== null && keywordInfo.missing.length){
+      addKeyword(`Work these keywords from the job description in, if they genuinely apply: ${keywordInfo.missing.slice(0, 5).join(', ')}.`);
+    } else if (keywordInfo.score === null){
+      addKeyword('Paste a job description in the Keyword Targeting section below to check for missing keywords.');
+    }
+
+    const longBullets = allBullets.filter(b => b.length > 260).length;
+    if (longBullets) addFormatting(`${longBullets} of your bullets ${longBullets > 1 ? 'are' : 'is'} very long — break ${longBullets > 1 ? 'them' : 'it'} into shorter, punchier lines.`);
+    const hasStrayChars = allBullets.some(b => /[•\t]/.test(b));
+    if (hasStrayChars) addFormatting('Remove bullet characters (•) or tabs from your bullet lines — one achievement per line is enough.');
+
+    return [...contentTips, ...impactTips, ...keywordTips, ...formattingTips].slice(0, 6);
+  }
+
+  function renderSuggestions(tips){
+    const container = document.getElementById('score-suggestions');
+    if (!container) return;
+    if (tips.length === 0){
+      container.innerHTML = '<div class="suggestions-empty">Nice — no quick wins left. Your resume covers everything we check for here.</div>';
+      return;
+    }
+    container.innerHTML = tips.map(t => `
+      <div class="suggestion-row">
+        <span class="suggestion-tag" style="background:${t.color};"></span>
+        <span>${escapeHtml(t.text)}</span>
+      </div>
+    `).join('');
+  }
+
   function updateAnalysis(){
     const resume = getResumeSnapshot();
     const resumeText = resumeFullText(resume);
@@ -1249,6 +1337,7 @@
     animateRing(mainRing, mainNum, mainLabel, overall, 900);
 
     renderKeywordChips(matched, missing);
+    renderSuggestions(generateSuggestions(resume, { matched, missing, score: keywordScore }));
   }
 
   let analysisDebounce = null;
