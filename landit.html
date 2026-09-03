@@ -171,12 +171,20 @@
   .card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:28px; box-shadow:var(--shadow);}
   .field{margin-bottom:16px;}
   .field label{display:block; font-size:13px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
-  .field input, .field textarea{
+  .field input:not([type="checkbox"]), .field textarea, .field select{
     width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s);
     font-family:'Inter',sans-serif; font-size:14.5px; color:var(--ink); background:var(--paper);
   }
   .field textarea{resize:vertical; min-height:76px;}
-  .field input:focus, .field textarea:focus{outline:2px solid var(--ink-soft); outline-offset:1px;}
+  .field select{cursor:pointer;}
+  .field select:hover{border-color:var(--ink-soft);}
+  .field input:not([type="checkbox"]):focus, .field textarea:focus, .field select:focus-visible{outline:2px solid var(--ink-soft); outline-offset:1px;}
+
+  .date-select-row{display:grid; grid-template-columns:1.3fr 1fr; gap:8px;}
+  .date-select-row select:disabled{opacity:.5; cursor:not-allowed;}
+  .exp-current-label{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-soft); margin-top:9px; cursor:pointer; width:fit-content;}
+  .exp-current-label input[type="checkbox"]{width:14px; height:14px; margin:0; cursor:pointer; accent-color:var(--forest);}
+  .exp-current-label input{cursor:pointer;}
 
   .example-select{
     padding:9px 14px; border:1px solid var(--line); border-radius:var(--radius-s);
@@ -911,6 +919,115 @@
   // ---- Full resume builder engine ----
   let expCount = 0;
 
+  // ---- Start/end date pickers: month + year selects instead of free text ----
+  //
+  // A free-text date field let people type "13", a 5-digit year, or a
+  // future start date. Dropdowns make those states impossible to enter in
+  // the first place (12 fixed months, a fixed year range, future
+  // month/year combos disabled) rather than validating after the fact.
+  // Each field still exposes a hidden .exp-start/.exp-end input holding the
+  // composed "Mon YYYY" (or "YYYY", or "Present") display string, so every
+  // other place in the app that reads entry.start/entry.end as plain text
+  // (rendering, ATS scoring, PDF export, saving) needs no changes.
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DATE_NOW = new Date();
+  const CURRENT_YEAR = DATE_NOW.getFullYear();
+  const CURRENT_MONTH = DATE_NOW.getMonth() + 1;
+
+  function populateMonthSelect(sel){
+    sel.innerHTML = '<option value="">Month</option>' +
+      MONTH_NAMES.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+  }
+
+  function populateYearSelect(sel, maxYear, minYear){
+    minYear = minYear || 1960;
+    let opts = '<option value="">Year</option>';
+    for (let y = maxYear; y >= minYear; y--) opts += `<option value="${y}">${y}</option>`;
+    sel.innerHTML = opts;
+  }
+
+  function applyFutureMonthGuard(monthSel, yearSel){
+    const year = parseInt(yearSel.value, 10);
+    Array.from(monthSel.options).forEach(opt => {
+      if (!opt.value) return;
+      opt.disabled = year === CURRENT_YEAR && parseInt(opt.value, 10) > CURRENT_MONTH;
+    });
+    if (monthSel.value && year === CURRENT_YEAR && parseInt(monthSel.value, 10) > CURRENT_MONTH){
+      monthSel.value = '';
+    }
+  }
+
+  function composeDateValue(monthSel, yearSel){
+    if (!yearSel.value) return '';
+    return monthSel.value ? `${MONTH_NAMES[parseInt(monthSel.value, 10) - 1]} ${yearSel.value}` : yearSel.value;
+  }
+
+  // Understands the display strings this same UI produces ("Jun 2022",
+  // "2022", "Present") so saved/example resumes round-trip through the
+  // pickers correctly. Anything else (old free-typed text) degrades to a
+  // blank date rather than throwing.
+  function parseDateString(str){
+    const trimmed = (str || '').trim();
+    if (!trimmed) return { month: '', year: '' };
+    if (/^present$/i.test(trimmed)) return { month: '', year: '', current: true };
+    const withMonth = trimmed.match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+    if (withMonth){
+      const idx = MONTH_NAMES.findIndex(m => m.toLowerCase() === withMonth[1].slice(0, 3).toLowerCase());
+      return { month: idx >= 0 ? String(idx + 1) : '', year: withMonth[2] };
+    }
+    const yearOnly = trimmed.match(/^(\d{4})$/);
+    if (yearOnly) return { month: '', year: yearOnly[1] };
+    return { month: '', year: '' };
+  }
+
+  function updateExpDateField(entry, which){
+    const monthSel = entry.querySelector('.exp-' + which + '-month');
+    const yearSel = entry.querySelector('.exp-' + which + '-year');
+    const hidden = entry.querySelector('.exp-' + which);
+    applyFutureMonthGuard(monthSel, yearSel);
+    if (which === 'end'){
+      const currentCheckbox = entry.querySelector('.exp-current');
+      if (currentCheckbox && currentCheckbox.checked){
+        hidden.value = 'Present';
+        renderResume();
+        return;
+      }
+    }
+    hidden.value = composeDateValue(monthSel, yearSel);
+    renderResume();
+  }
+
+  function toggleExpCurrent(checkbox){
+    const entry = checkbox.closest('.exp-entry');
+    const monthSel = entry.querySelector('.exp-end-month');
+    const yearSel = entry.querySelector('.exp-end-year');
+    monthSel.disabled = checkbox.checked;
+    yearSel.disabled = checkbox.checked;
+    if (checkbox.checked){
+      monthSel.value = '';
+      yearSel.value = '';
+    }
+    updateExpDateField(entry, 'end');
+  }
+
+  function applyPrefillDate(entry, which, str){
+    const parsed = parseDateString(str);
+    const monthSel = entry.querySelector('.exp-' + which + '-month');
+    const yearSel = entry.querySelector('.exp-' + which + '-year');
+    if (parsed.year && !Array.from(yearSel.options).some(o => o.value === parsed.year)){
+      populateYearSelect(yearSel, CURRENT_YEAR, parseInt(parsed.year, 10));
+    }
+    yearSel.value = parsed.year || '';
+    monthSel.value = parsed.month || '';
+    if (which === 'end' && parsed.current){
+      const currentCheckbox = entry.querySelector('.exp-current');
+      currentCheckbox.checked = true;
+      monthSel.disabled = true;
+      yearSel.disabled = true;
+    }
+    updateExpDateField(entry, which);
+  }
+
   function addExperience(prefill){
     expCount++;
     const id = expCount;
@@ -930,11 +1047,20 @@
       <div class="exp-row">
         <div class="field">
           <label>Start date</label>
-          <input type="text" class="exp-start" placeholder="e.g. 2022" oninput="renderResume()">
+          <div class="date-select-row">
+            <select class="exp-start-month" onchange="updateExpDateField(this.closest('.exp-entry'), 'start')"></select>
+            <select class="exp-start-year" onchange="updateExpDateField(this.closest('.exp-entry'), 'start')"></select>
+          </div>
+          <input type="hidden" class="exp-start">
         </div>
         <div class="field">
           <label>End date</label>
-          <input type="text" class="exp-end" placeholder="e.g. Present" oninput="renderResume()">
+          <div class="date-select-row">
+            <select class="exp-end-month" onchange="updateExpDateField(this.closest('.exp-entry'), 'end')"></select>
+            <select class="exp-end-year" onchange="updateExpDateField(this.closest('.exp-entry'), 'end')"></select>
+          </div>
+          <label class="exp-current-label"><input type="checkbox" class="exp-current" onchange="toggleExpCurrent(this)"> I currently work here</label>
+          <input type="hidden" class="exp-end">
         </div>
       </div>
       <div class="field">
@@ -943,13 +1069,20 @@
       </div>
     `;
     document.getElementById('exp-list').appendChild(wrap);
+
+    populateMonthSelect(wrap.querySelector('.exp-start-month'));
+    populateYearSelect(wrap.querySelector('.exp-start-year'), CURRENT_YEAR);
+    populateMonthSelect(wrap.querySelector('.exp-end-month'));
+    populateYearSelect(wrap.querySelector('.exp-end-year'), CURRENT_YEAR);
+
     if (prefill){
       wrap.querySelector('.exp-title').value = prefill.title || '';
       wrap.querySelector('.exp-company').value = prefill.company || '';
-      wrap.querySelector('.exp-start').value = prefill.start || '';
-      wrap.querySelector('.exp-end').value = prefill.end || '';
       wrap.querySelector('.exp-bullets').value = (prefill.bullets || []).join('\n');
     }
+    applyPrefillDate(wrap, 'start', prefill && prefill.start);
+    applyPrefillDate(wrap, 'end', prefill && prefill.end);
+
     renderResume();
   }
 
@@ -1848,7 +1981,7 @@
         skills: ['Python', 'Go', 'PostgreSQL', 'AWS', 'Docker', 'Kubernetes', 'REST APIs', 'CI/CD'],
         entries: [
           {
-            title: 'Senior Software Engineer', company: 'Northlake Systems', start: '2022', end: 'Present',
+            title: 'Senior Software Engineer', company: 'Northlake Systems', start: 'Jun 2022', end: 'Present',
             bullets: [
               'Led the migration of a monolithic billing service to microservices, cutting average response time by 40%',
               'Built a rate-limiting layer that reduced downstream API errors by 65% during peak traffic',
@@ -1856,7 +1989,7 @@
             ],
           },
           {
-            title: 'Software Engineer', company: 'Beacon Analytics', start: '2019', end: '2022',
+            title: 'Software Engineer', company: 'Beacon Analytics', start: 'Jul 2019', end: 'Jun 2022',
             bullets: [
               'Developed a real-time data pipeline processing 2M events per day using Kafka and Go',
               'Reduced infrastructure costs by 22% by rightsizing AWS resources and automating scale-down',
@@ -1877,7 +2010,7 @@
         skills: ['Go-to-market strategy', 'Positioning', 'Sprint planning', 'SQL', 'Figma', 'A/B testing', 'Content strategy'],
         entries: [
           {
-            title: 'Senior Product Marketing Manager', company: 'Northwind Digital', start: '2022', end: 'Present',
+            title: 'Senior Product Marketing Manager', company: 'Northwind Digital', start: 'Mar 2022', end: 'Present',
             bullets: [
               'Led go-to-market for a repositioning that grew qualified pipeline by 30% in two quarters',
               'Launched 4 major product releases, coordinating messaging across sales, support, and design',
@@ -1885,7 +2018,7 @@
             ],
           },
           {
-            title: 'Product Marketing Manager', company: 'Harbor Cloud', start: '2019', end: '2022',
+            title: 'Product Marketing Manager', company: 'Harbor Cloud', start: 'Aug 2019', end: 'Mar 2022',
             bullets: [
               "Built the company's first competitive battlecard program, adopted by 40+ sales reps",
               'Drove a 25% increase in webinar attendance by redesigning the promotion funnel',
@@ -1906,7 +2039,7 @@
         skills: ['Patient assessment', 'EHR/Epic', 'IV therapy', 'Triage', 'Patient education', 'HIPAA compliance', 'BLS/ACLS certified'],
         entries: [
           {
-            title: 'Charge Nurse', company: 'Saint Vincent Medical Center', start: '2021', end: 'Present',
+            title: 'Charge Nurse', company: 'Saint Vincent Medical Center', start: 'Feb 2021', end: 'Present',
             bullets: [
               'Managed a 24-bed med-surg unit, coordinating care for up to 30 patients per shift',
               'Reduced average patient wait time by 15% by redesigning the intake triage process',
@@ -1914,7 +2047,7 @@
             ],
           },
           {
-            title: 'Staff Nurse', company: 'Riverside General Hospital', start: '2017', end: '2021',
+            title: 'Staff Nurse', company: 'Riverside General Hospital', start: 'Jun 2017', end: 'Feb 2021',
             bullets: [
               'Delivered direct care to an average of 6 patients per shift in a high-acuity emergency department',
               'Improved patient satisfaction scores by 20% through a bedside communication initiative',
@@ -1935,7 +2068,7 @@
         skills: ['Consultative selling', 'Salesforce', 'Cold outreach', 'Negotiation', 'Pipeline management', 'Territory planning'],
         entries: [
           {
-            title: 'Account Executive', company: 'Brightline Software', start: '2022', end: 'Present',
+            title: 'Account Executive', company: 'Brightline Software', start: 'Jan 2022', end: 'Present',
             bullets: [
               'Exceeded quarterly quota by an average of 22% over 6 consecutive quarters',
               'Won $1.4M in new business by building relationships with mid-market and enterprise accounts',
@@ -1943,7 +2076,7 @@
             ],
           },
           {
-            title: 'Sales Development Representative', company: 'Fenwick Tech', start: '2020', end: '2022',
+            title: 'Sales Development Representative', company: 'Fenwick Tech', start: 'Jul 2020', end: 'Jan 2022',
             bullets: [
               'Generated over 300 qualified opportunities through targeted cold outreach and LinkedIn prospecting',
               'Achieved 130% of quota in first year, ranking top 3 out of a 20-person SDR team',
