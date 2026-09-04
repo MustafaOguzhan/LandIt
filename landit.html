@@ -143,6 +143,14 @@
     box-shadow:var(--shadow); padding:28px; position:relative;
   }
   .preview-topline{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .preview-cta{
+    position:absolute; top:-14px; right:24px;
+    background:var(--amber); color:var(--ink);
+    font-size:12.5px; font-weight:700; letter-spacing:.01em;
+    padding:7px 15px; border-radius:999px;
+    box-shadow:var(--shadow);
+    transform:rotate(-3deg);
+  }
   .dot-row{display:flex; gap:6px;}
   .dot{width:8px; height:8px; border-radius:50%; background:var(--line);}
   .score-chip{display:flex; align-items:center; gap:6px; background:var(--forest-tint); color:var(--forest-deep); font-weight:700; font-size:13px; padding:5px 12px; border-radius:999px;}
@@ -538,6 +546,7 @@
       <p class="hero-note" id="hero-trial-note">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
     </div>
     <div class="preview-card">
+      <span class="preview-cta">👆 Click and see</span>
       <div class="preview-topline">
         <div class="hero-tabbar">
           <button class="htab active" data-pane="build" onclick="heroTab(this,'build')">Build</button>
@@ -611,7 +620,6 @@
         <div class="fb-row" style="grid-template-columns:70px 1fr 32px; margin-top:16px;"><span class="lbl" style="font-size:12px;">Clarity</span><div class="bar-track"><div class="bar-fill" style="width:88%"></div></div><span class="pct" style="font-size:11px;">88%</span></div>
       </div>
     </div>
-    <p style="text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:12px;">Click a tab above — this is what LandIt actually looks like.</p>
   </div>
 </section>
 
