@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/cron-trial-feedback", "schedule": "0 9 * * *" }
+  ],
   "headers": [
     {
       "source": "/landit.html",
