@@ -9,7 +9,7 @@
 // Configure this URL in the Stripe Dashboard -> Developers -> Webhooks:
 //   https://<your-domain>/api/stripe-webhook
 // listening for: checkout.session.completed, customer.subscription.updated,
-// customer.subscription.deleted
+// customer.subscription.deleted, customer.subscription.trial_will_end
 
 const { createClient } = require('@supabase/supabase-js');
 const Stripe = require('stripe');
@@ -22,9 +22,18 @@ async function readRawBody(req) {
 }
 
 function mapStripeStatus(stripeStatus) {
-  if (stripeStatus === 'active' || stripeStatus === 'trialing') return 'active';
+  if (stripeStatus === 'active') return 'active';
+  if (stripeStatus === 'trialing') return 'trialing';
   if (stripeStatus === 'past_due' || stripeStatus === 'unpaid') return 'past_due';
   return 'canceled'; // canceled, incomplete_expired, paused, etc.
+}
+
+function formatUsd(unitAmount) {
+  return '$' + (unitAmount / 100).toFixed(2);
+}
+
+function formatDate(unixSeconds) {
+  return new Date(unixSeconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 module.exports = async (req, res) => {
@@ -56,13 +65,65 @@ module.exports = async (req, res) => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const userId = session.client_reference_id;
-      if (userId) {
+      if (userId && session.subscription) {
+        // Don't assume 'active' - Checkout completing just means the card
+        // was saved successfully. If subscription_data.trial_period_days
+        // was set (a first-time subscriber), the subscription's real
+        // status right now is 'trialing', not 'active' - fetch it instead
+        // of guessing, so the Account panel and access checks agree with
+        // what Stripe actually thinks is true.
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
         await supabase.from('profiles').update({
           stripe_customer_id: session.customer,
           stripe_subscription_id: session.subscription,
-          subscription_status: 'active',
+          subscription_status: mapStripeStatus(subscription.status),
           updated_at: new Date().toISOString(),
         }).eq('id', userId);
+      }
+    } else if (event.type === 'customer.subscription.trial_will_end') {
+      // Stripe fires this 3 days before a trial converts to a paid charge
+      // (its default lead time). This is the "we're about to charge your
+      // card" notice - required for doing auto-converting trials the
+      // right way, not a surprise charge with no warning.
+      const subscription = event.data.object;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, trial_ending_email_sent_at')
+        .eq('stripe_customer_id', subscription.customer)
+        .single();
+
+      if (profile && !profile.trial_ending_email_sent_at) {
+        const { data: userData } = await supabase.auth.admin.getUserById(profile.id);
+        const email = userData?.user?.email;
+        const price = subscription.items?.data?.[0]?.price;
+        if (email && price && subscription.trial_end) {
+          const amount = formatUsd(price.unit_amount);
+          const interval = price.recurring?.interval === 'year' ? 'year' : 'month';
+          const chargeDate = formatDate(subscription.trial_end);
+          try {
+            await sendFeedbackEmail({
+              to: email,
+              subject: `Your LandIt trial ends ${chargeDate} — here's what happens next`,
+              text: [
+                'Hi,',
+                '',
+                `Your 7-day free trial ends on ${chargeDate}. After that, your card on file will be charged ${amount}/${interval} to continue on LandIt Pro — no action needed if you want to keep going.`,
+                '',
+                "If you'd rather not continue, cancel anytime before then from Account → Manage billing, and you won't be charged.",
+                '',
+                'Thanks,',
+                'The LandIt team',
+              ].join('\n'),
+            });
+            await supabase
+              .from('profiles')
+              .update({ trial_ending_email_sent_at: new Date().toISOString() })
+              .eq('id', profile.id);
+          } catch (err) {
+            // Non-critical - don't fail the webhook (and trigger a Stripe
+            // retry) over an email that couldn't be sent.
+          }
+        }
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object;

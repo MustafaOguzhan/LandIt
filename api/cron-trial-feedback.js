@@ -1,12 +1,20 @@
 // Vercel Cron Job - invoked automatically once a day (see vercel.json).
 //
-// Finds users whose 7-day free trial ended without ever subscribing
-// (subscription_status is still 'trialing' - it only ever changes via the
-// Stripe webhook once someone actually checks out) and sends each one a
-// short, human "what stopped you?" email, once per user. The parallel
-// cancellation-feedback email for people who *did* subscribe and then
-// canceled lives in api/stripe-webhook.js instead, since that's an event
-// (a Stripe webhook call), not something to poll for on a schedule.
+// Finds users who created an account but never actually started their
+// trial (never completed Stripe Checkout, so no card is on file and no
+// subscription exists - stripe_subscription_id is null) and sends each
+// one a short, human "what stopped you?" email, once per user.
+//
+// subscription_status alone can't distinguish this anymore: since the
+// trial now requires a card, someone who DID check out is *also*
+// 'trialing' for their first 7 days (mapped from Stripe's own 'trialing'
+// status) - excluding anyone with a stripe_subscription_id is what keeps
+// this from emailing "why didn't you subscribe" to someone who actually
+// did and is about to be charged (that person gets the
+// trial_will_end reminder from api/stripe-webhook.js instead). The
+// parallel cancellation-feedback email for people who subscribed and then
+// canceled also lives in api/stripe-webhook.js, since that's an event, not
+// something to poll for on a schedule.
 
 const { createClient } = require('@supabase/supabase-js');
 const { sendFeedbackEmail } = require('../lib/resend');
@@ -33,6 +41,7 @@ module.exports = async (req, res) => {
     .from('profiles')
     .select('id, trial_started_at')
     .eq('subscription_status', 'trialing')
+    .is('stripe_subscription_id', null)
     .is('trial_ended_email_sent_at', null)
     .lte('trial_started_at', sevenDaysAgo);
 
@@ -51,12 +60,12 @@ module.exports = async (req, res) => {
     try {
       await sendFeedbackEmail({
         to: email,
-        subject: "Didn't get to finish your LandIt trial?",
+        subject: "Didn't get around to trying LandIt?",
         text: [
           'Hi,',
           '',
-          "Your 7-day LandIt trial ended and you haven't subscribed yet - no worries,",
-          "just wanted to ask: what stopped you from continuing? Price, a missing",
+          "You signed up for LandIt a week ago but never started your free trial -",
+          "no worries, just wanted to ask: what stopped you? Price, a missing",
           "feature, or something that just didn't work right?",
           '',
           "Hit reply, I read every one of these myself.",

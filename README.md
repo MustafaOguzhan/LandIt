@@ -64,14 +64,24 @@ secret keys on the server — none of them are ever exposed to the browser.
 5. Go to **Developers → Webhooks → Add endpoint**. Endpoint URL:
    `https://<your-deployed-domain>/api/stripe-webhook`. Select these events:
    `checkout.session.completed`, `customer.subscription.updated`,
-   `customer.subscription.deleted`. Save, then copy the **Signing secret**
-   (starts with `whsec_...`) — set it as `STRIPE_WEBHOOK_SECRET` in Vercel.
+   `customer.subscription.deleted`, `customer.subscription.trial_will_end`.
+   Save, then copy the **Signing secret** (starts with `whsec_...`) — set it
+   as `STRIPE_WEBHOOK_SECRET` in Vercel.
 6. Redeploy (or just push any small change) so Vercel picks up the new
    environment variables.
 
-Note: the 7-day free trial requires no credit card by design — it's tracked
-in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe only gets
-involved once someone clicks "Continue to LandIt Pro" and actually subscribes.
+Note: the 7-day free trial requires a card up front — starting it means
+picking a plan and completing Stripe Checkout with `subscription_data:
+{ trial_period_days: 7 }` (see `api/create-checkout-session.js`), so the
+trial auto-converts into that paid plan when the 7 days end unless the
+person cancels first. Stripe fires `customer.subscription.trial_will_end`
+3 days before that charge, which `api/stripe-webhook.js` uses to send a
+"your card will be charged on [date]" email via Resend — this is what
+makes the auto-conversion a disclosed, expected charge rather than a
+surprise one. `profiles.trial_started_at` still exists, but only for the
+Account panel's "X days left" countdown display — actual access during
+the trial is gated on a real Stripe subscription existing (see
+`api/_lib/access.js`), not on that column.
 
 The Account panel's "Manage billing" button (`api/create-portal-session.js`)
 opens Stripe's hosted Customer Portal, where a subscriber can update their

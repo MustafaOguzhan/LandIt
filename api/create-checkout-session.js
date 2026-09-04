@@ -1,12 +1,18 @@
 // Vercel serverless function — POST /api/create-checkout-session
 //
-// Called by a logged-in user clicking "Continue to LandIt Pro" (monthly or
-// yearly). Verifies their Supabase session, finds or creates their Stripe
-// customer, and returns a Stripe Checkout Session URL for the chosen plan's
-// price. The 7-day trial itself is tracked entirely in Supabase (profiles.
-// trial_started_at) - Stripe is only involved once someone actually
-// subscribes, which is what makes "no credit card required" for the
-// trial possible.
+// Called right when someone starts their free trial (from the signup
+// modal) and when an existing user picks/changes a plan from Pricing or
+// the Account panel. Verifies their Supabase session, finds or creates
+// their Stripe customer, and returns a Stripe Checkout Session URL for the
+// chosen plan's price.
+//
+// A card is required to start the trial (Stripe collects it during
+// Checkout) so the trial can convert automatically into a paid
+// subscription after 7 days without the person having to come back and
+// re-enter payment details - this is disclosed clearly in the UI and in
+// terms.html. A profile only gets the 7-day Stripe trial once: if
+// stripe_subscription_id is already set (they've subscribed before, even
+// if they later canceled), this is a straight paid Checkout with no trial.
 
 const { createClient } = require('@supabase/supabase-js');
 const Stripe = require('stripe');
@@ -51,7 +57,7 @@ module.exports = async (req, res) => {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, stripe_subscription_id')
     .eq('id', user.id)
     .single();
   if (profileError) {
@@ -72,12 +78,14 @@ module.exports = async (req, res) => {
       await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id);
     }
 
+    const trialEligible = !profile.stripe_subscription_id;
     const origin = req.headers.origin || `https://${req.headers.host}`;
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
       client_reference_id: user.id,
       line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: trialEligible ? { trial_period_days: 7 } : undefined,
       success_url: `${origin}/landit.html?checkout=success`,
       cancel_url: `${origin}/landit.html?checkout=cancel`,
     });

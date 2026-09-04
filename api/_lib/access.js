@@ -6,8 +6,17 @@
 // hasActiveAccess() in landit.html, but that's a UX convenience, not a
 // security boundary - anyone who knows the endpoint URL could call it
 // directly and rack up real Anthropic/Adzuna usage otherwise. This mirrors
-// the exact trial/subscription logic from landit.html's
-// hasActiveAccess()/trialDaysLeft() so both sides agree.
+// the exact access logic from landit.html's hasActiveAccess() so both
+// sides agree.
+//
+// The trial requires a card (collected via Stripe Checkout with
+// trial_period_days:7 - see api/create-checkout-session.js), so access
+// during the trial is granted by a real Stripe subscription in 'trialing'
+// status, not by counting days since signup. A profile row defaults to
+// subscription_status='trialing' the moment someone creates an account
+// (before they've necessarily finished Checkout) - requiring
+// stripe_subscription_id too is what stops that default from granting
+// access on its own, before a card is actually on file.
 //
 // NOTE: this file lives under api/_lib/ (not api/) so Vercel doesn't treat
 // it as a route of its own - only files directly under api/ become
@@ -15,11 +24,10 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const TRIAL_DAYS = 7;
-
-function trialDaysLeft(trialStartedAt) {
-  const elapsedDays = (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24);
-  return Math.max(0, Math.ceil(TRIAL_DAYS - elapsedDays));
+function hasActiveAccess(profile) {
+  if (!profile) return false;
+  if (profile.subscription_status === 'active') return true;
+  return profile.subscription_status === 'trialing' && !!profile.stripe_subscription_id;
 }
 
 // Verifies the caller's Supabase session and active-access status. On
@@ -50,7 +58,7 @@ async function requireActiveAccess(req, res) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('trial_started_at, subscription_status')
+    .select('subscription_status, stripe_subscription_id')
     .eq('id', user.id)
     .single();
   if (profileError || !profile) {
@@ -58,8 +66,7 @@ async function requireActiveAccess(req, res) {
     return null;
   }
 
-  const active = profile.subscription_status === 'active' || trialDaysLeft(profile.trial_started_at) > 0;
-  if (!active) {
+  if (!hasActiveAccess(profile)) {
     res.status(403).json({ error: 'Your trial has ended. Choose a plan to keep using this feature.' });
     return null;
   }
@@ -67,4 +74,4 @@ async function requireActiveAccess(req, res) {
   return { user };
 }
 
-module.exports = { requireActiveAccess, trialDaysLeft };
+module.exports = { requireActiveAccess, hasActiveAccess };

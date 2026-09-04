@@ -10,20 +10,31 @@ standard and legal in this market — dozens of competitors exist.
 
 ## Business model
 - Target audience: broad / general job seekers, not a specific niche.
-- Monetization: **7-day free trial, no credit card required**, then a
+- Monetization: **7-day free trial, card required to start**, then a
   **paid subscription — $13/month or $89/year** (owner's decision, revised
   down from an initial $24/$99; Rezi.ai at ~$29/mo has real features LandIt
-  currently doesn't — AI-written bullet points/cover letters, a job
-  tracker/autofill extension, LinkedIn import — so pricing this close to it
-  overstated LandIt's current scope. $13/$89 reflects the narrower feature
-  set honestly; revisit upward once/if an AI-content-writing feature is
-  built. **Update: that feature now exists** (see "AI content writing" in
-  the status table below) — worth the owner revisiting price upward now
-  that the gap with Rezi.ai narrowed; not changed unilaterally, still the
+  currently doesn't — AI-written cover letters, a job tracker/autofill
+  extension, LinkedIn import — so pricing this close to it overstated
+  LandIt's current scope. $13/$89 reflects the narrower feature set
+  honestly; revisit upward once/if an AI-content-writing feature is built.
+  **Update: that feature now exists** (see "AI content writing" in the
+  status table below) — worth the owner revisiting price upward now that
+  the gap with Rezi.ai narrowed; not changed unilaterally, still the
   owner's call. Annual plan discounted ~43% vs. paying monthly to nudge
-  people toward it). No lifetime/one-time-payment tier — explicitly ruled out by
-  the owner due to the unbounded long-term support liability of a one-time
-  payment.
+  people toward it). No lifetime/one-time-payment tier — explicitly ruled
+  out by the owner due to the unbounded long-term support liability of a
+  one-time payment.
+- **Trial auto-converts to paid.** The trial requires a card up front
+  (Stripe Checkout with `trial_period_days: 7`, chosen at signup) and
+  automatically becomes a real charge on that plan when the 7 days end,
+  unless canceled first — reversing an earlier no-card-required design.
+  Owner's explicit decision: a plain "your trial ended, now pay or lose
+  access" gate at day 7 mostly just prompts people to delete their
+  account and try a competitor's free tier instead of converting to paid.
+  Disclosed clearly at signup and in `terms.html`, with a reminder email
+  before the actual charge (`customer.subscription.trial_will_end` →
+  Resend, see "Churn-feedback emails" in the status table) so this is a
+  disclosed auto-renewal, not a surprise charge.
 - Priority: the owner has explicitly said **cost is not a concern — the
   top priority is a reliable, bug-free product.** Prefer correctness and
   stability over speed of delivery, especially for anything touching
