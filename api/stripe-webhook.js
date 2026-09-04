@@ -13,6 +13,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const Stripe = require('stripe');
+const { sendFeedbackEmail } = require('../lib/resend');
 
 async function readRawBody(req) {
   const chunks = [];
@@ -66,11 +67,57 @@ module.exports = async (req, res) => {
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object;
       const status = event.type === 'customer.subscription.deleted' ? 'canceled' : mapStripeStatus(subscription.status);
+
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, subscription_status, cancel_feedback_email_sent_at')
+        .eq('stripe_customer_id', subscription.customer)
+        .single();
+
       await supabase.from('profiles').update({
         stripe_subscription_id: subscription.id,
         subscription_status: status,
         updated_at: new Date().toISOString(),
       }).eq('stripe_customer_id', subscription.customer);
+
+      // Fire the "why did you cancel" email only on the transition into
+      // canceled (not on retries of the same event, and not on unrelated
+      // updates like a card change) and only once per user ever.
+      const justCanceled = status === 'canceled'
+        && existingProfile
+        && existingProfile.subscription_status !== 'canceled'
+        && !existingProfile.cancel_feedback_email_sent_at;
+      if (justCanceled) {
+        const { data: userData } = await supabase.auth.admin.getUserById(existingProfile.id);
+        const email = userData?.user?.email;
+        if (email) {
+          try {
+            await sendFeedbackEmail({
+              to: email,
+              subject: 'Sorry to see you go — one quick question',
+              text: [
+                'Hi,',
+                '',
+                'I noticed your LandIt subscription was just canceled. Mind sharing why?',
+                "Price, a missing feature, or something that didn't work well?",
+                '',
+                'Hit reply, I read every one of these myself and it genuinely helps.',
+                '',
+                'Thanks,',
+                'The LandIt team',
+              ].join('\n'),
+            });
+            await supabase
+              .from('profiles')
+              .update({ cancel_feedback_email_sent_at: new Date().toISOString() })
+              .eq('id', existingProfile.id);
+          } catch (err) {
+            // Don't fail the whole webhook (and trigger a Stripe retry) over
+            // a non-critical feedback email - the subscription status above
+            // already saved successfully, which is what actually matters.
+          }
+        }
+      }
     }
     // Other event types are ignored on purpose - Stripe expects a 200 for
     // any event type we receive, whether or not we act on it.

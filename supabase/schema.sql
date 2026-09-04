@@ -24,6 +24,12 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+-- Added later for the churn-feedback emails (api/cron-trial-feedback.js and
+-- the cancellation path in api/stripe-webhook.js) - each column is set once,
+-- the first time that email is sent, so a user is never emailed twice.
+alter table public.profiles add column if not exists trial_ended_email_sent_at timestamptz;
+alter table public.profiles add column if not exists cancel_feedback_email_sent_at timestamptz;
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Users can read own profile" on public.profiles;
