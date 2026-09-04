@@ -8,7 +8,7 @@ with accounts and a 7-day free trial → paid monthly or yearly subscription.
 1. Go to [vercel.com](https://vercel.com), sign in, and click **Add New → Project**.
 2. Import this GitHub repository.
 3. Before the first deploy, open **Environment Variables** and add:
-   - `ANTHROPIC_API_KEY` — get one at [console.anthropic.com](https://console.anthropic.com). Powers the AI mock interview. Without it, the interview chat still loads but shows a clear "needs an API key" message instead of a real response.
+   - `ANTHROPIC_API_KEY` — get one at [console.anthropic.com](https://console.anthropic.com). Powers the AI mock interview and the "Improve with AI" resume-writing buttons. Without it, both still load but show a clear "needs an API key" message instead of a real response.
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from a Supabase project (see below). Used server-side only, for Stripe webhook writes.
    - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MONTHLY`, `STRIPE_PRICE_ID_YEARLY` — from a Stripe account (see below).
    - `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` — from an Adzuna account (see below). Powers job search. Without it, the Job Search section shows a clear "needs an API key" message instead of results.

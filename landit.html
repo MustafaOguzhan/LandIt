@@ -95,6 +95,10 @@
   .btn-ghost:hover{border-color:var(--ink-soft);}
   .btn-danger{background:var(--clay-tint); color:var(--clay);}
   .btn-danger:hover{background:var(--clay); color:#fff;}
+  .btn-ai{background:var(--plum-tint); color:var(--plum);}
+  .btn-ai:hover{background:var(--plum); color:#fff;}
+  .btn-ai:disabled{opacity:.6; cursor:not-allowed; transform:none;}
+  .btn-ai:disabled:hover{background:var(--plum-tint); color:var(--plum);}
   .btn-sm{padding:8px 16px; font-size:13.5px;}
 
   /* ---------- Hero ---------- */
@@ -232,6 +236,12 @@
 
   .field-divider{font-size:11.5px; font-weight:700; letter-spacing:.05em; color:var(--ink-soft); margin:22px 0 12px; padding-top:16px; border-top:1px solid var(--line);}
   .field-hint{font-size:12px; color:var(--ink-soft); margin:6px 0 0;}
+  .field-label-row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;}
+  .field-label-row label{margin:0;}
+  .ai-suggest-wrap{margin-top:10px; padding:12px 14px; border-radius:var(--radius-m); background:var(--plum-tint);}
+  .ai-suggest-box{font-size:13.5px; line-height:1.55; color:var(--ink); white-space:pre-wrap;}
+  .ai-suggest-actions{display:flex; gap:8px; margin-top:10px;}
+  .ai-suggest-error{font-size:12.5px; color:var(--clay); margin-top:8px;}
   .field-divider:first-of-type{border-top:none; padding-top:0;}
   .exp-entry{border:1px solid var(--line); border-radius:var(--radius-m); padding:16px; margin-bottom:12px; position:relative; background:var(--paper);}
   .exp-entry .remove-exp{position:absolute; top:12px; right:12px; background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600;}
@@ -657,8 +667,19 @@
           <input type="hidden" id="in-photo">
         </div>
         <div class="field">
-          <label for="in-summary">Professional summary</label>
+          <div class="field-label-row">
+            <label for="in-summary">Professional summary</label>
+            <button type="button" class="btn btn-ai btn-sm" id="summary-ai-btn" onclick="improveSummaryWithAI(this)">✨ Write with AI</button>
+          </div>
           <textarea id="in-summary" placeholder="A couple of sentences on what you do and what you're looking for next."></textarea>
+          <div class="ai-suggest-wrap" id="summary-ai-suggest" hidden>
+            <div class="ai-suggest-box" id="summary-ai-text"></div>
+            <div class="ai-suggest-actions">
+              <button type="button" class="btn btn-primary btn-sm" onclick="useAISuggestion('summary')">Use this</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="discardAISuggestion('summary')">Discard</button>
+            </div>
+          </div>
+          <p class="ai-suggest-error" id="summary-ai-error" style="display:none;"></p>
         </div>
 
         <div class="field-divider">EXPERIENCE</div>
@@ -1139,8 +1160,19 @@
         </div>
       </div>
       <div class="field">
-        <label>What did you do? (one line per achievement)</label>
+        <div class="field-label-row">
+          <label>What did you do? (one line per achievement)</label>
+          <button type="button" class="btn btn-ai btn-sm exp-ai-btn" onclick="improveBulletsWithAI(this)">✨ Improve with AI</button>
+        </div>
         <textarea class="exp-bullets" placeholder="Led go-to-market for a repositioning that grew qualified pipeline by 30%" oninput="renderResume()"></textarea>
+        <div class="ai-suggest-wrap exp-ai-suggest" hidden>
+          <div class="ai-suggest-box exp-ai-text"></div>
+          <div class="ai-suggest-actions">
+            <button type="button" class="btn btn-primary btn-sm" onclick="useExpAISuggestion(this)">Use this</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="discardExpAISuggestion(this)">Discard</button>
+          </div>
+        </div>
+        <p class="ai-suggest-error exp-ai-error" style="display:none;"></p>
       </div>
     `;
     document.getElementById('exp-list').appendChild(wrap);
@@ -1348,6 +1380,127 @@
 
   // Start with one experience entry pre-added
   addExperience();
+</script>
+
+<script>
+  // ---- AI-assisted content writing (bullet points + professional summary) ----
+  // Never silently overwrites what the candidate wrote: every result shows
+  // as a preview with explicit "Use this" / "Discard" buttons first.
+
+  async function callGenerateContent(payload){
+    const res = await fetch('/api/generate-content', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (currentSession && currentSession.access_token),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+    return data.text;
+  }
+
+  async function improveSummaryWithAI(btn){
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('AI-assisted writing needs an active trial or subscription.');
+      return;
+    }
+    const role = document.getElementById('in-role').value.trim();
+    if (!role){
+      alert('Add a target role first so the AI knows what to write for.');
+      return;
+    }
+    const skills = document.getElementById('in-skills').value.trim();
+    const bulletsContext = Array.from(document.querySelectorAll('.exp-bullets'))
+      .map(t => t.value.trim()).filter(Boolean).join('\n');
+    const existingSummary = document.getElementById('in-summary').value.trim();
+
+    const suggestWrap = document.getElementById('summary-ai-suggest');
+    const errorEl = document.getElementById('summary-ai-error');
+    suggestWrap.hidden = true;
+    errorEl.style.display = 'none';
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Writing…';
+    try {
+      const text = await callGenerateContent({
+        type: 'summary',
+        role,
+        text: existingSummary,
+        context: [skills ? `Skills: ${skills}` : '', bulletsContext ? `Experience:\n${bulletsContext}` : ''].filter(Boolean).join('\n\n'),
+      });
+      document.getElementById('summary-ai-text').textContent = text;
+      suggestWrap.hidden = false;
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not generate a summary right now.';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  function useAISuggestion(kind){
+    if (kind === 'summary'){
+      document.getElementById('in-summary').value = document.getElementById('summary-ai-text').textContent;
+      document.getElementById('summary-ai-suggest').hidden = true;
+      renderResume();
+      if (typeof scheduleAnalysisUpdate === 'function') scheduleAnalysisUpdate();
+      if (typeof scheduleResumeSave === 'function') scheduleResumeSave();
+    }
+  }
+
+  function discardAISuggestion(kind){
+    if (kind === 'summary') document.getElementById('summary-ai-suggest').hidden = true;
+  }
+
+  async function improveBulletsWithAI(btn){
+    if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
+      promptUpgrade('AI-assisted writing needs an active trial or subscription.');
+      return;
+    }
+    const entry = btn.closest('.exp-entry');
+    const role = entry.querySelector('.exp-title').value.trim() || document.getElementById('in-role').value.trim();
+    if (!role){
+      alert('Add a job title for this role first so the AI knows what to write for.');
+      return;
+    }
+    const company = entry.querySelector('.exp-company').value.trim();
+    const text = entry.querySelector('.exp-bullets').value.trim();
+
+    const suggestWrap = entry.querySelector('.exp-ai-suggest');
+    const errorEl = entry.querySelector('.exp-ai-error');
+    suggestWrap.hidden = true;
+    errorEl.style.display = 'none';
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Writing…';
+    try {
+      const result = await callGenerateContent({ type: 'bullet', role, company, text });
+      entry.querySelector('.exp-ai-text').textContent = result;
+      suggestWrap.hidden = false;
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not generate bullet points right now.';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+
+  function useExpAISuggestion(btn){
+    const entry = btn.closest('.exp-entry');
+    entry.querySelector('.exp-bullets').value = entry.querySelector('.exp-ai-text').textContent;
+    entry.querySelector('.exp-ai-suggest').hidden = true;
+    renderResume();
+    if (typeof scheduleAnalysisUpdate === 'function') scheduleAnalysisUpdate();
+    if (typeof scheduleResumeSave === 'function') scheduleResumeSave();
+  }
+
+  function discardExpAISuggestion(btn){
+    btn.closest('.exp-ai-suggest').hidden = true;
+  }
 </script>
 
 <script>
