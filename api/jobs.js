@@ -91,6 +91,7 @@ async function fetchCareerjetJobs({ what, where, country, req }) {
   }
 
   const origin = req.headers.origin || `https://${req.headers.host}`;
+  const resultsPageUrl = `${origin}/#jobs`;
   const userIp = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim() || '127.0.0.1';
   const userAgent = req.headers['user-agent'] || 'LandIt/1.0';
 
@@ -98,7 +99,7 @@ async function fetchCareerjetJobs({ what, where, country, req }) {
     affid: CAREERJET_AFFID,
     user_ip: userIp,
     user_agent: userAgent,
-    url: `${origin}/#jobs`,
+    url: resultsPageUrl,
     keywords: what,
     locale_code: CAREERJET_LOCALES[country],
     pagesize: String(RESULTS_PER_PAGE),
@@ -110,10 +111,15 @@ async function fetchCareerjetJobs({ what, where, country, req }) {
   // https - this legacy endpoint apparently doesn't serve TLS, which is
   // what an https request here was failing on (Node's fetch throws a
   // generic "fetch failed" TypeError on a TLS handshake failure, before
-  // any HTTP response exists to inspect).
+  // any HTTP response exists to inspect). It also requires a Referer
+  // header matching the `url` param - without it Careerjet rejects the
+  // request with an "Undeclared referrer" error - which the official
+  // client sets from the same `url` value, matched here.
   let upstream;
   try {
-    upstream = await fetch(`http://public.api.careerjet.net/search?${params.toString()}`);
+    upstream = await fetch(`http://public.api.careerjet.net/search?${params.toString()}`, {
+      headers: { Referer: resultsPageUrl, 'User-Agent': userAgent },
+    });
   } catch (networkErr) {
     return { error: { status: 502, body: { error: 'Could not reach Careerjet.', detail: String(networkErr) } } };
   }
