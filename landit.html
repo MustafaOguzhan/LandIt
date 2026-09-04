@@ -139,13 +139,20 @@
   .dot{width:8px; height:8px; border-radius:50%; background:var(--line);}
   .score-chip{display:flex; align-items:center; gap:6px; background:var(--forest-tint); color:var(--forest-deep); font-weight:700; font-size:13px; padding:5px 12px; border-radius:999px;}
   .resume-mini{border:1px solid var(--line); border-radius:var(--radius-m); padding:22px; background:#fff;}
+  .resume-mini .rhead{display:flex; align-items:center; gap:13px;}
+  .resume-mini .ravatar{width:44px; height:44px; border-radius:50%; background:var(--forest); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; flex-shrink:0;}
   .resume-mini .rname{font-family:'Fraunces',serif; font-size:20px; font-weight:600;}
-  .resume-mini .rrole{color:var(--teal); font-size:13.5px; font-weight:600; margin-top:2px;}
+  .resume-mini .rrole{display:inline-block; color:var(--teal); background:var(--teal-tint); font-size:12.5px; font-weight:600; margin-top:4px; padding:3px 11px; border-radius:999px;}
   .resume-mini .rline{height:8px; background:var(--line); border-radius:4px; margin-top:14px;}
   .resume-mini .rline.w1{width:100%;}
   .resume-mini .rline.w2{width:88%;}
   .resume-mini .rline.w3{width:65%;}
-  .resume-mini .rsection{margin-top:20px; font-size:11.5px; letter-spacing:.04em; color:var(--ink-soft); font-weight:700;}
+  .resume-mini .rsection{margin-top:20px; font-size:11.5px; letter-spacing:.04em; color:var(--ink-soft); font-weight:700; display:flex; align-items:center; gap:8px;}
+  .resume-mini .rsection::before{content:''; width:7px; height:7px; border-radius:50%; background:var(--ink-soft); flex-shrink:0;}
+  .resume-mini .rsection.accent-clay::before{background:var(--clay);}
+  .resume-mini .rsection.accent-plum::before{background:var(--plum);}
+  .resume-mini .rtags{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px;}
+  .resume-mini .rtag{font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px;}
 
   /* ---------- Logos strip ---------- */
   .logostrip{padding:34px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
@@ -517,7 +524,7 @@
       <h1>Write the resume that<br>actually lands the job.</h1>
       <p class="hero-sub">LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start your 7-day free trial</a>
+        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); handleStartTrialClick();">Start your 7-day free trial</a>
         <a class="btn btn-ghost" href="#ai-interview">Try an AI interview</a>
       </div>
       <p class="hero-note">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
@@ -534,15 +541,24 @@
 
       <div class="hero-pane active" id="pane-build">
         <div class="resume-mini">
-          <div class="rname">Alicia Moreno</div>
-          <div class="rrole">Product Marketing Manager</div>
+          <div class="rhead">
+            <div class="ravatar">AM</div>
+            <div>
+              <div class="rname">Alicia Moreno</div>
+              <div class="rrole">Product Marketing Manager</div>
+            </div>
+          </div>
           <div class="rline w1"></div>
           <div class="rline w2"></div>
-          <div class="rsection">EXPERIENCE</div>
+          <div class="rsection accent-clay">EXPERIENCE</div>
           <div class="rline w1"></div>
           <div class="rline w3"></div>
-          <div class="rsection">SKILLS</div>
-          <div class="rline w2"></div>
+          <div class="rsection accent-plum">SKILLS</div>
+          <div class="rtags">
+            <span class="rtag" style="background:var(--plum-tint); color:var(--plum);">Positioning</span>
+            <span class="rtag" style="background:var(--teal-tint); color:var(--teal);">SQL</span>
+            <span class="rtag" style="background:var(--amber-tint); color:#8A5A16;">A/B testing</span>
+          </div>
         </div>
       </div>
 
@@ -919,7 +935,7 @@
           <li>✓ 2 interview practice sessions</li>
         </ul>
         <p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 14px;">Card required to start — cancel before day 7 to avoid being charged.</p>
-        <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="width:100%;">Start free trial</a>
+        <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); handleStartTrialClick();" style="width:100%;">Start free trial</a>
       </div>
       <div class="price-card">
         <div class="price-tag">Monthly</div>
@@ -954,7 +970,7 @@
   <h2>Your next job is one resume away.</h2>
   <p>Start free for seven days, cancel anytime before it ends — no charge, no hassle.</p>
   <div class="hero-actions">
-    <a class="btn btn-primary" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
+    <a class="btn btn-primary" href="#" onclick="event.preventDefault(); handleStartTrialClick();" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
   </div>
 </div>
 
@@ -2705,6 +2721,24 @@
     if (!supabaseReady || !currentSession || !currentProfile) return false;
     if (currentProfile.subscription_status === 'active') return true;
     return currentProfile.subscription_status === 'trialing' && !!currentProfile.stripe_subscription_id;
+  }
+
+  // Handler for the static marketing "Start free trial" CTAs (hero,
+  // pricing free-trial card, CTA band) - these are plain HTML, not
+  // re-rendered per session the way the nav is, so without this they'd
+  // always pop the signup modal even for someone who's already logged in
+  // and on a plan, which makes no sense for them to see.
+  function handleStartTrialClick(){
+    if (!currentSession){
+      openAuthModal('signup');
+      return;
+    }
+    if (hasActiveAccess()){
+      document.getElementById('builder').scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    const pricing = document.getElementById('pricing');
+    if (pricing) pricing.scrollIntoView({ behavior: 'smooth' });
   }
 
   function promptUpgrade(message){
