@@ -12,7 +12,7 @@ with accounts and a 7-day free trial → paid monthly or yearly subscription.
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from a Supabase project (see below). Used server-side only, for Stripe webhook writes.
    - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MONTHLY`, `STRIPE_PRICE_ID_YEARLY` — from a Stripe account (see below).
    - `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` — from an Adzuna account (see below). Powers job search for its 19 covered countries. Without it, the Job Search section shows a clear "needs an API key" message instead of results.
-   - `CAREERJET_AFFID` — from a Careerjet publisher account (see below). Powers job search for the countries Adzuna doesn't cover (Denmark, Finland, Ireland, Norway, Portugal, Sweden, Turkey, UAE). Without it, only searches for those specific countries fail — everything else works.
+   - `CAREERJET_AFFID` — from a Careerjet publisher account (see below). Powers job search for the 42 countries Adzuna doesn't cover. Without it, only searches for those specific countries fail — everything else works.
    - `RESEND_API_KEY`, `FEEDBACK_FROM_EMAIL`, `FEEDBACK_REPLY_TO`, `CRON_SECRET` — from a Resend account (see below). Powers the churn-feedback emails. Without `RESEND_API_KEY`/`FEEDBACK_FROM_EMAIL`, those emails just fail silently (logged, not user-facing) — nothing else breaks.
 4. Click **Deploy**. Every future push to this branch redeploys automatically.
 
@@ -153,13 +153,16 @@ country dropdown against that exact list server-side, and routes anything
 outside it to Careerjet instead (see below) if it's one of the countries
 covered there.
 
-### Setting up Careerjet (extra country coverage — Nordics + a few others)
+### Setting up Careerjet (42 more countries)
 
 Adzuna doesn't cover every country (Norway, notably, isn't in its index at
-all — see above). Careerjet is a second job-search API, used only for the
-countries Adzuna doesn't have: Denmark, Finland, Ireland, Norway, Portugal,
-Sweden, Turkey, and the UAE (`CAREERJET_LOCALES` in `api/jobs.js`). Each
-country routes to exactly one provider, never both.
+all — see above). Careerjet is a second job-search API, used for every
+country in its locale list that Adzuna doesn't already have — 42 in total
+(`CAREERJET_LOCALES` in `api/jobs.js`), spanning Europe, the Middle East,
+Asia-Pacific, and Latin America. Each country routes to exactly one
+provider, never both. Russia is deliberately left out (a sanctions/
+compliance judgment call, not a technical limitation) — worth revisiting
+explicitly if ever wanted, not something to add casually.
 
 1. Sign up as a **publisher** at
    [careerjet.com/partners/signup.html](https://www.careerjet.com/partners/signup.html)
@@ -173,16 +176,18 @@ country routes to exactly one provider, never both.
 4. Redeploy so Vercel picks up the new environment variable.
 
 Skipping this section is safe — searches for the 19 Adzuna countries keep
-working exactly as before either way. Only the 8 Careerjet-routed countries
+working exactly as before either way. Only the 42 Careerjet-routed countries
 in the dropdown need it; without `CAREERJET_AFFID` set, those specific
 searches return a clear "server is missing CAREERJET_AFFID" error instead
 of results.
 
-More countries can be added later by adding entries to `CAREERJET_LOCALES`
-(country code → Careerjet locale code, e.g. `no: 'no_NO'`) and the matching
-`<option>` in the Job Search country dropdown in `landit.html` — Careerjet
-supports 70+ locales in total; only a curated subset relevant to LandIt's
-current audience was added here.
+Careerjet supports 70+ locales in total; the ones not added here are
+mostly additional language variants of countries Adzuna already covers
+(e.g. Belgium has both French and Dutch Careerjet locales, but Adzuna
+already indexes Belgium, so neither was added) or Russia (see above). More
+can be added later the same way: an entry in `CAREERJET_LOCALES` (country
+code → Careerjet locale code, e.g. `no: 'no_NO'`) plus the matching
+`<option>` in the Job Search country dropdown in `landit.html`.
 
 ## Local development
 
