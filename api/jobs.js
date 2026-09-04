@@ -105,7 +105,18 @@ async function fetchCareerjetJobs({ what, where, country, req }) {
   });
   if (where) params.set('location', where);
 
-  const upstream = await fetch(`https://public.api.careerjet.net/search?${params.toString()}`);
+  // Careerjet's own official API client (github.com/careerjet/careerjet-api-
+  // client-python, Constants.API_URL) hardcodes this as plain http, not
+  // https - this legacy endpoint apparently doesn't serve TLS, which is
+  // what an https request here was failing on (Node's fetch throws a
+  // generic "fetch failed" TypeError on a TLS handshake failure, before
+  // any HTTP response exists to inspect).
+  let upstream;
+  try {
+    upstream = await fetch(`http://public.api.careerjet.net/search?${params.toString()}`);
+  } catch (networkErr) {
+    return { error: { status: 502, body: { error: 'Could not reach Careerjet.', detail: String(networkErr) } } };
+  }
   const rawText = await upstream.text();
 
   if (!upstream.ok) {
