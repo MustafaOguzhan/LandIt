@@ -42,6 +42,14 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  /* The browser's default `[hidden]{display:none}` rule is user-agent-
+     origin, which loses to ANY same-page rule that sets `display` on the
+     same element (e.g. .btn{display:inline-flex}) or an inline style,
+     regardless of specificity - author-origin CSS always wins that fight.
+     Several buttons/links here (.btn-classed, some with inline display
+     styles) are toggled via the `hidden` attribute in JS, so without this
+     override they stay visually visible even once `.hidden = true`. */
+  [hidden]{display:none !important;}
   body{
     background:var(--paper);
     color:var(--ink);
@@ -524,10 +532,10 @@
       <h1>Write the resume that<br>actually lands the job.</h1>
       <p class="hero-sub">LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); handleStartTrialClick();">Start your 7-day free trial</a>
+        <a class="btn btn-primary" href="#" id="hero-trial-btn" onclick="event.preventDefault(); handleStartTrialClick();">Start your 7-day free trial</a>
         <a class="btn btn-ghost" href="#ai-interview">Try an AI interview</a>
       </div>
-      <p class="hero-note">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
+      <p class="hero-note" id="hero-trial-note">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
     </div>
     <div class="preview-card">
       <div class="preview-topline">
@@ -966,7 +974,7 @@
   </div>
 </section>
 
-<div class="cta-band">
+<div class="cta-band" id="cta-band">
   <h2>Your next job is one resume away.</h2>
   <p>Start free for seven days, cancel anytime before it ends — no charge, no hassle.</p>
   <div class="hero-actions">
@@ -2757,6 +2765,7 @@
   }
 
   function renderNavAuth(){
+    updateMarketingTrialCtas();
     const container = document.getElementById('navcta');
     if (!container) return;
 
@@ -2771,11 +2780,13 @@
     let badge;
     if (currentProfile && currentProfile.subscription_status === 'active'){
       badge = '<span class="trial-badge trial-badge-pro">Pro</span>';
-    } else {
-      const daysLeft = currentProfile ? trialDaysLeft(currentProfile.trial_started_at) : null;
-      badge = (daysLeft !== null && daysLeft > 0)
+    } else if (currentProfile && currentProfile.subscription_status === 'trialing' && currentProfile.stripe_subscription_id){
+      const daysLeft = trialDaysLeft(currentProfile.trial_started_at);
+      badge = daysLeft > 0
         ? `<span class="trial-badge">${daysLeft}d left in trial</span>`
         : '<span class="trial-badge trial-badge-expired">Trial ended</span>';
+    } else {
+      badge = '<span class="trial-badge trial-badge-expired">Trial not started</span>';
     }
 
     container.innerHTML = `
@@ -2783,6 +2794,21 @@
       <a href="#" style="font-size:13.5px; color:var(--ink-soft); text-decoration:none; font-weight:600;" onclick="event.preventDefault(); openAccountModal();" title="Account settings">${escapeHtml(currentSession.user.email)}</a>
       <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); handleLogout();">Log out</a>
     `;
+  }
+
+  // The hero, and the closing CTA band, both pitch starting a free trial -
+  // once someone has real active access (a genuine card-backed trial or a
+  // paid subscription), that pitch no longer applies to them and showing
+  // it just reads as broken/confusing. Called every time renderNavAuth()
+  // is, so it's always in sync with the current session/profile.
+  function updateMarketingTrialCtas(){
+    const active = !!(currentSession && typeof hasActiveAccess === 'function' && hasActiveAccess());
+    const heroBtn = document.getElementById('hero-trial-btn');
+    const heroNote = document.getElementById('hero-trial-note');
+    const ctaBand = document.getElementById('cta-band');
+    if (heroBtn) heroBtn.hidden = active;
+    if (heroNote) heroNote.hidden = active;
+    if (ctaBand) ctaBand.hidden = active;
   }
 
   async function loadProfile(userId){
