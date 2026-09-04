@@ -1,16 +1,25 @@
 // Vercel serverless function — GET /api/jobs?what=<role>&where=<location>&country=<code>
 //
-// Proxies job search to the Adzuna API, keeping the app_id/app_key secret
-// server-side. Returns a normalized, minimal job list; the frontend
-// computes a real match % against the viewer's resume using the same
-// keyword-matching engine as the ATS score / keyword targeting sections.
+// Proxies job search to one of two upstream providers, keeping both APIs'
+// credentials secret server-side. Returns a normalized, minimal job list;
+// the frontend computes a real match % against the viewer's resume using
+// the same keyword-matching engine as the ATS score / keyword targeting
+// sections.
 //
-// Adzuna indexes a fixed set of 19 countries (no single "world" endpoint) -
-// ADZUNA_COUNTRIES is that list. "country" was previously hardcoded to 'us'
-// regardless of what the caller searched for, so a location in any other
-// country silently searched US listings. It's now a required, whitelisted
-// param (validated here, not just trusted from the client) since it's
-// interpolated directly into the upstream URL path.
+// Two providers because neither covers every country on its own:
+// - Adzuna: ADZUNA_COUNTRIES, its fixed set of 19 indexed countries.
+//   "country" was previously hardcoded to 'us' regardless of what the
+//   caller searched for, so a location in any other country silently
+//   searched US listings - it's now a required, whitelisted param
+//   (validated here, not just trusted from the client) since it's
+//   interpolated directly into the upstream URL path.
+// - Careerjet: CAREERJET_LOCALES, a curated set of additional countries
+//   Adzuna doesn't index (Nordics, a few others) - added to close the gap
+//   Adzuna left (e.g. Norway had no coverage at all before this). Requires
+//   a Careerjet publisher account (see README) for the affid.
+// Each country routes to exactly one provider - never both - to keep this
+// simple and avoid double API usage for countries Adzuna already handles
+// well.
 //
 // Requires an active trial/subscription (see api/_lib/access.js) - this is
 // a paid-tier feature, and the client-side gate alone doesn't stop someone
@@ -22,7 +31,100 @@ const ADZUNA_COUNTRIES = new Set([
   'au', 'at', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'gb',
   'in', 'it', 'mx', 'nl', 'nz', 'pl', 'sg', 'us', 'za',
 ]);
+// Careerjet locale codes, from https://github.com/careerjet/careerjet-api-client-python
+const CAREERJET_LOCALES = {
+  ae: 'en_AE',
+  dk: 'da_DK',
+  fi: 'fi_FI',
+  ie: 'en_IE',
+  no: 'no_NO',
+  pt: 'pt_PT',
+  se: 'sv_SE',
+  tr: 'tr_TR',
+};
 const RESULTS_PER_PAGE = 12;
+
+function stripHtmlTags(text) {
+  return (text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchAdzunaJobs({ what, where, country }) {
+  const { ADZUNA_APP_ID, ADZUNA_APP_KEY } = process.env;
+  if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) {
+    return { error: { status: 500, body: { error: 'Server is missing ADZUNA_APP_ID/ADZUNA_APP_KEY. See README.md.' } } };
+  }
+
+  const params = new URLSearchParams({
+    app_id: ADZUNA_APP_ID,
+    app_key: ADZUNA_APP_KEY,
+    results_per_page: String(RESULTS_PER_PAGE),
+    what,
+    'content-type': 'application/json',
+  });
+  if (where) params.set('where', where);
+
+  const upstream = await fetch(`https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`);
+  if (!upstream.ok) {
+    const detail = await upstream.text();
+    return { error: { status: 502, body: { error: 'Job search is unavailable right now.', detail } } };
+  }
+
+  const data = await upstream.json();
+  const jobs = (data.results || []).map((j) => ({
+    id: j.id,
+    title: j.title || '',
+    company: j.company?.display_name || '',
+    location: j.location?.display_name || '',
+    description: j.description || '',
+    url: j.redirect_url || '',
+    contractType: j.contract_time || j.contract_type || null,
+    salaryMin: typeof j.salary_min === 'number' ? Math.round(j.salary_min) : null,
+    salaryMax: typeof j.salary_max === 'number' ? Math.round(j.salary_max) : null,
+  }));
+  return { jobs };
+}
+
+async function fetchCareerjetJobs({ what, where, country, req }) {
+  const { CAREERJET_AFFID } = process.env;
+  if (!CAREERJET_AFFID) {
+    return { error: { status: 500, body: { error: 'Server is missing CAREERJET_AFFID. See README.md.' } } };
+  }
+
+  const origin = req.headers.origin || `https://${req.headers.host}`;
+  const userIp = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim() || '127.0.0.1';
+  const userAgent = req.headers['user-agent'] || 'LandIt/1.0';
+
+  const params = new URLSearchParams({
+    affid: CAREERJET_AFFID,
+    user_ip: userIp,
+    user_agent: userAgent,
+    url: `${origin}/#jobs`,
+    keywords: what,
+    locale_code: CAREERJET_LOCALES[country],
+    pagesize: String(RESULTS_PER_PAGE),
+  });
+  if (where) params.set('location', where);
+
+  const upstream = await fetch(`https://public.api.careerjet.net/search?${params.toString()}`);
+  if (!upstream.ok) {
+    const detail = await upstream.text();
+    return { error: { status: 502, body: { error: 'Job search is unavailable right now.', detail } } };
+  }
+
+  const data = await upstream.json();
+  const jobs = (data.jobs || []).map((j, idx) => ({
+    id: j.url || `careerjet-${idx}`,
+    title: j.title || '',
+    company: j.company || '',
+    location: j.locations || '',
+    description: stripHtmlTags(j.description),
+    url: j.url || '',
+    contractType: null,
+    salaryMin: null,
+    salaryMax: null,
+  }));
+  return { jobs };
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -31,12 +133,6 @@ module.exports = async (req, res) => {
   }
 
   if (!(await requireActiveAccess(req, res))) return;
-
-  const { ADZUNA_APP_ID, ADZUNA_APP_KEY } = process.env;
-  if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) {
-    res.status(500).json({ error: 'Server is missing ADZUNA_APP_ID/ADZUNA_APP_KEY. See README.md.' });
-    return;
-  }
 
   const what = (req.query.what || '').toString().trim();
   const where = (req.query.where || '').toString().trim();
@@ -49,44 +145,24 @@ module.exports = async (req, res) => {
     res.status(400).json({ error: 'Query is too long' });
     return;
   }
-  if (!ADZUNA_COUNTRIES.has(country)) {
-    res.status(400).json({ error: 'Missing or unsupported "country" - Adzuna covers: ' + Array.from(ADZUNA_COUNTRIES).sort().join(', ') });
+
+  const provider = ADZUNA_COUNTRIES.has(country) ? 'adzuna' : (country in CAREERJET_LOCALES ? 'careerjet' : null);
+  if (!provider) {
+    const supported = [...ADZUNA_COUNTRIES, ...Object.keys(CAREERJET_LOCALES)].sort();
+    res.status(400).json({ error: 'Missing or unsupported "country" - covers: ' + supported.join(', ') });
     return;
   }
 
-  const params = new URLSearchParams({
-    app_id: ADZUNA_APP_ID,
-    app_key: ADZUNA_APP_KEY,
-    results_per_page: String(RESULTS_PER_PAGE),
-    what,
-    'content-type': 'application/json',
-  });
-  if (where) params.set('where', where);
-
   try {
-    const upstream = await fetch(
-      `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`
-    );
-    if (!upstream.ok) {
-      const detail = await upstream.text();
-      res.status(502).json({ error: 'Job search is unavailable right now.', detail });
+    const result = provider === 'adzuna'
+      ? await fetchAdzunaJobs({ what, where, country })
+      : await fetchCareerjetJobs({ what, where, country, req });
+
+    if (result.error) {
+      res.status(result.error.status).json(result.error.body);
       return;
     }
-
-    const data = await upstream.json();
-    const jobs = (data.results || []).map((j) => ({
-      id: j.id,
-      title: j.title || '',
-      company: j.company?.display_name || '',
-      location: j.location?.display_name || '',
-      description: j.description || '',
-      url: j.redirect_url || '',
-      contractType: j.contract_time || j.contract_type || null,
-      salaryMin: typeof j.salary_min === 'number' ? Math.round(j.salary_min) : null,
-      salaryMax: typeof j.salary_max === 'number' ? Math.round(j.salary_max) : null,
-    }));
-
-    res.status(200).json({ jobs });
+    res.status(200).json({ jobs: result.jobs });
   } catch (err) {
     res.status(500).json({ error: 'Job search request failed', detail: String(err) });
   }

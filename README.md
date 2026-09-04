@@ -11,7 +11,8 @@ with accounts and a 7-day free trial → paid monthly or yearly subscription.
    - `ANTHROPIC_API_KEY` — get one at [console.anthropic.com](https://console.anthropic.com). Powers the AI mock interview and the "Improve with AI" resume-writing buttons. Without it, both still load but show a clear "needs an API key" message instead of a real response.
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from a Supabase project (see below). Used server-side only, for Stripe webhook writes.
    - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MONTHLY`, `STRIPE_PRICE_ID_YEARLY` — from a Stripe account (see below).
-   - `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` — from an Adzuna account (see below). Powers job search. Without it, the Job Search section shows a clear "needs an API key" message instead of results.
+   - `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` — from an Adzuna account (see below). Powers job search for its 19 covered countries. Without it, the Job Search section shows a clear "needs an API key" message instead of results.
+   - `CAREERJET_AFFID` — from a Careerjet publisher account (see below). Powers job search for the countries Adzuna doesn't cover (Denmark, Finland, Ireland, Norway, Portugal, Sweden, Turkey, UAE). Without it, only searches for those specific countries fail — everything else works.
    - `RESEND_API_KEY`, `FEEDBACK_FROM_EMAIL`, `FEEDBACK_REPLY_TO`, `CRON_SECRET` — from a Resend account (see below). Powers the churn-feedback emails. Without `RESEND_API_KEY`/`FEEDBACK_FROM_EMAIL`, those emails just fail silently (logged, not user-facing) — nothing else breaks.
 4. Click **Deploy**. Every future push to this branch redeploys automatically.
 
@@ -137,15 +138,41 @@ as before.
 Adzuna only indexes 19 countries (there's no single "world" endpoint) —
 Australia, Austria, Belgium, Brazil, Canada, France, Germany, India, Italy,
 Mexico, Netherlands, New Zealand, Poland, Singapore, South Africa, Spain,
-Switzerland, UK, and US. The Job Search section has a country dropdown
-(`api/jobs.js` validates it against that exact list server-side); searching
-a country outside it — **Norway included** — isn't possible through Adzuna
-at any settings. The closest real fix for a Norway-specific job feed is
-[NAV's official job vacancy feed](https://navikt.github.io/pam-stilling-feed/),
-which covers the large majority of public Norwegian job ads — but unlike
-Adzuna it isn't self-serve: it requires emailing
-`nav.team.arbeidsplassen@nav.no`, agreeing to their terms of use, and being
-issued a bearer token before any code can call it.
+Switzerland, UK, and US. `api/jobs.js` validates the Job Search section's
+country dropdown against that exact list server-side, and routes anything
+outside it to Careerjet instead (see below) if it's one of the countries
+covered there.
+
+### Setting up Careerjet (extra country coverage — Nordics + a few others)
+
+Adzuna doesn't cover every country (Norway, notably, isn't in its index at
+all — see above). Careerjet is a second job-search API, used only for the
+countries Adzuna doesn't have: Denmark, Finland, Ireland, Norway, Portugal,
+Sweden, Turkey, and the UAE (`CAREERJET_LOCALES` in `api/jobs.js`). Each
+country routes to exactly one provider, never both.
+
+1. Sign up as a **publisher** at
+   [careerjet.com/partners/signup.html](https://www.careerjet.com/partners/signup.html)
+   — this asks for your site (`landitai.com`) and basic contact/company
+   info, since it's an affiliate/publisher program rather than a plain paid
+   API. Click the activation link Careerjet emails you.
+2. Log in at [careerjet.com/partners](https://www.careerjet.com/partners),
+   go to your `landitai.com` website entry, and open its **API** section —
+   your **affid** (a 32-character affiliate ID) is shown there.
+3. Set it as `CAREERJET_AFFID` in Vercel.
+4. Redeploy so Vercel picks up the new environment variable.
+
+Skipping this section is safe — searches for the 19 Adzuna countries keep
+working exactly as before either way. Only the 8 Careerjet-routed countries
+in the dropdown need it; without `CAREERJET_AFFID` set, those specific
+searches return a clear "server is missing CAREERJET_AFFID" error instead
+of results.
+
+More countries can be added later by adding entries to `CAREERJET_LOCALES`
+(country code → Careerjet locale code, e.g. `no: 'no_NO'`) and the matching
+`<option>` in the Job Search country dropdown in `landit.html` — Careerjet
+supports 70+ locales in total; only a curated subset relevant to LandIt's
+current audience was added here.
 
 ## Local development
 
