@@ -2096,7 +2096,10 @@
         headers: { 'Authorization': 'Bearer ' + (currentSession && currentSession.access_token) },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || ('Search failed (' + res.status + ')'));
+      if (!res.ok){
+        const detail = data.detail ? ' — ' + String(data.detail).slice(0, 300) : '';
+        throw new Error((data.error || ('Search failed (' + res.status + ')')) + detail);
+      }
       renderJobs(data.jobs);
     } catch (err) {
       listEl.innerHTML = `<p class="lexp-empty">Could not load jobs (${escapeHtml(err.message)}).</p>`;
