@@ -13,10 +13,10 @@
 //   searched US listings - it's now a required, whitelisted param
 //   (validated here, not just trusted from the client) since it's
 //   interpolated directly into the upstream URL path.
-// - Careerjet: CAREERJET_LOCALES, a curated set of additional countries
-//   Adzuna doesn't index (Nordics, a few others) - added to close the gap
-//   Adzuna left (e.g. Norway had no coverage at all before this). Requires
-//   a Careerjet publisher account (see README) for the affid.
+// - Careerjet: CAREERJET_LOCALES, every other country Careerjet supports
+//   that Adzuna doesn't already index - closes real gaps Adzuna left (e.g.
+//   Norway had no coverage at all before this). Requires a Careerjet
+//   publisher account (see README) for the affid.
 // Each country routes to exactly one provider - never both - to keep this
 // simple and avoid double API usage for countries Adzuna already handles
 // well.
@@ -31,16 +31,60 @@ const ADZUNA_COUNTRIES = new Set([
   'au', 'at', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'gb',
   'in', 'it', 'mx', 'nl', 'nz', 'pl', 'sg', 'us', 'za',
 ]);
-// Careerjet locale codes, from https://github.com/careerjet/careerjet-api-client-python
+// Careerjet locale codes, from https://github.com/careerjet/careerjet-api-client-python's
+// full LOCALES list - every one whose country isn't already covered by
+// Adzuna above. Where Careerjet lists more than one locale for the same
+// country (e.g. Belgium has both fr_BE and nl_BE), that country is already
+// on Adzuna so it's skipped entirely rather than picking a language.
+// Russia (ru_RU) deliberately left out - worth a deliberate call given
+// sanctions/compliance context, not something to include by default.
 const CAREERJET_LOCALES = {
+  // Europe
   ae: 'en_AE',
+  cz: 'cs_CZ',
   dk: 'da_DK',
   fi: 'fi_FI',
+  hu: 'hu_HU',
   ie: 'en_IE',
+  lu: 'fr_LU',
   no: 'no_NO',
   pt: 'pt_PT',
   se: 'sv_SE',
+  sk: 'sk_SK',
   tr: 'tr_TR',
+  ua: 'uk_UA',
+  // Middle East / Africa
+  kw: 'en_KW',
+  ma: 'fr_MA',
+  om: 'en_OM',
+  qa: 'en_QA',
+  sa: 'en_SA',
+  // Asia-Pacific
+  bd: 'en_BD',
+  cn: 'zh_CN',
+  hk: 'en_HK',
+  jp: 'ja_JP',
+  kr: 'ko_KR',
+  my: 'en_MY',
+  ph: 'en_PH',
+  pk: 'en_PK',
+  tw: 'en_TW',
+  vn: 'vi_VN',
+  // Latin America / Caribbean
+  ar: 'es_AR',
+  bo: 'es_BO',
+  cl: 'es_CL',
+  co: 'es_CO',
+  cr: 'es_CR',
+  do: 'es_DO',
+  ec: 'es_EC',
+  gt: 'es_GT',
+  pa: 'es_PA',
+  pe: 'es_PE',
+  pr: 'es_PR',
+  py: 'es_PY',
+  uy: 'es_UY',
+  ve: 'es_VE',
 };
 const RESULTS_PER_PAGE = 12;
 
