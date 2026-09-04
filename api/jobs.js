@@ -106,12 +106,27 @@ async function fetchCareerjetJobs({ what, where, country, req }) {
   if (where) params.set('location', where);
 
   const upstream = await fetch(`https://public.api.careerjet.net/search?${params.toString()}`);
+  const rawText = await upstream.text();
+
   if (!upstream.ok) {
-    const detail = await upstream.text();
-    return { error: { status: 502, body: { error: 'Job search is unavailable right now.', detail } } };
+    return { error: { status: 502, body: { error: 'Job search is unavailable right now.', detail: rawText.slice(0, 800) } } };
   }
 
-  const data = await upstream.json();
+  // Careerjet can return a non-JSON body (an HTML error/approval-pending
+  // page, most likely) even with a 200 status - parse defensively so that
+  // case surfaces a diagnosable error instead of an uncaught exception
+  // that falls through to the generic 500 in the outer handler.
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    return { error: { status: 502, body: { error: 'Job search returned an unexpected (non-JSON) response.', detail: rawText.slice(0, 800) } } };
+  }
+
+  if (data.type === 'ERROR' || (data.error && !Array.isArray(data.jobs))) {
+    return { error: { status: 502, body: { error: 'Job search is unavailable right now.', detail: (data.error || data.message || JSON.stringify(data)).toString().slice(0, 800) } } };
+  }
+
   const jobs = (data.jobs || []).map((j, idx) => ({
     id: j.url || `careerjet-${idx}`,
     title: j.title || '',
