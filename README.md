@@ -24,7 +24,8 @@ secret keys on the server — none of them are ever exposed to the browser.
 
 ### Languages
 
-The site is available in English, Turkish, German, and Norwegian —
+The site is available in English, Turkish, German, Norwegian, Spanish,
+French, Portuguese, and Italian —
 auto-detected from the visitor's browser, switchable anytime from the
 dropdown in the nav (their choice is then remembered). No setup needed;
 this doesn't use any environment variable. The AI mock interview and the

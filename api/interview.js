@@ -16,7 +16,10 @@ const MAX_TURNS = 12; // cap history so a single request can't balloon token usa
 const MAX_MESSAGE_CHARS = 3000;
 
 // Keys must match the site's SUPPORTED_LANGS in landit.html.
-const LANGUAGE_NAMES = { en: 'English', tr: 'Turkish', de: 'German', no: 'Norwegian' };
+const LANGUAGE_NAMES = {
+  en: 'English', tr: 'Turkish', de: 'German', no: 'Norwegian',
+  es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian',
+};
 
 function buildSystemPrompt(lang) {
   const languageName = LANGUAGE_NAMES[lang] || LANGUAGE_NAMES.en;
@@ -45,6 +48,10 @@ const FALLBACK_REPLIES = {
   tr: 'Üzgünüm, tam anlayamadım — biraz daha anlatabilir misiniz?',
   de: 'Entschuldigung, das habe ich nicht ganz verstanden — können Sie mir etwas mehr erzählen?',
   no: 'Beklager, jeg fikk ikke helt med meg det — kan du fortelle litt mer?',
+  es: '¿Disculpa, no entendí bien eso — podrías contarme un poco más?',
+  fr: "Désolé, je n'ai pas bien compris — pouvez-vous m'en dire un peu plus ?",
+  pt: 'Desculpe, não entendi bem — você poderia me contar um pouco mais?',
+  it: 'Scusa, non ho capito bene — potresti dirmi qualcosa in più?',
 };
 
 // Claude is instructed to reply with pure JSON, but models occasionally wrap

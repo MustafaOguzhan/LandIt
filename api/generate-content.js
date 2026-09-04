@@ -16,7 +16,10 @@ const MODEL = 'claude-sonnet-5';
 const MAX_FIELD_CHARS = 4000;
 
 // Keys must match the site's SUPPORTED_LANGS in landit.html.
-const LANGUAGE_NAMES = { en: 'English', tr: 'Turkish', de: 'German', no: 'Norwegian' };
+const LANGUAGE_NAMES = {
+  en: 'English', tr: 'Turkish', de: 'German', no: 'Norwegian',
+  es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian',
+};
 
 function languageInstruction(lang) {
   if (!lang || lang === 'en') return '';
