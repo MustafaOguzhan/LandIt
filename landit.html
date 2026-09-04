@@ -89,6 +89,15 @@
   .navcta{display:flex; align-items:center; gap:18px;}
   @media (max-width:820px){.navlinks{display:none;}}
 
+  .lang-select{
+    appearance:none; -webkit-appearance:none; border:1px solid var(--line); background:var(--paper);
+    color:var(--ink-soft); font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px;
+    padding:7px 10px; border-radius:999px; cursor:pointer; transition:transform .15s ease, border-color .15s ease;
+  }
+  .lang-select:hover{border-color:var(--ink-soft);}
+  .lang-select:focus-visible{outline:2px solid var(--forest); outline-offset:2px;}
+  .lang-select:active{transform:scale(0.97);}
+
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:8px;
     padding:11px 22px; border-radius:999px; font-weight:600; font-size:15px;
@@ -507,6 +516,1094 @@
 </head>
 <body>
 
+<script>
+  // ---- i18n: language dictionary + switch engine ----
+  //
+  // Covers site chrome (marketing copy, builder UI, modals, dynamic
+  // toasts/errors) plus the AI mock interview and AI content-writing
+  // features, which receive `lang` and reply in that language server-side
+  // (see api/interview.js, api/generate-content.js). Auto-detects from the
+  // browser on first visit, remembered afterward via localStorage, and
+  // always overridable via the nav language switcher. Resume field VALUES
+  // a person types (and the resume date-picker's month abbreviations,
+  // which round-trip through saved/example resumes) are intentionally not
+  // machine-translated - only the surrounding UI is.
+  const SUPPORTED_LANGS = ['en', 'tr', 'de', 'no'];
+
+  const I18N = {
+    en: {
+      "nav.link.interview": "AI Interview",
+      "nav.link.builder": "Resume Builder",
+      "nav.link.score": "ATS Score",
+      "nav.link.jobs": "Job Search",
+      "nav.link.pricing": "Pricing",
+      "nav.login": "Log in",
+      "nav.startTrial": "Start free trial",
+      "hero.eyebrow": "✦ Now with live AI mock interviews",
+      "hero.title": "Write the resume that<br>actually lands the job.",
+      "hero.subtitle": "LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.",
+      "hero.cta.trial": "Start your 7-day free trial",
+      "hero.cta.tryInterview": "Try an AI interview",
+      "hero.trialNote": "Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.",
+      "hero.clickAndSee": "👆 Click and see",
+      "hero.tab.build": "Build",
+      "hero.tab.score": "Score",
+      "hero.tab.target": "Target",
+      "hero.tab.practice": "Practice",
+      "score.label.content": "Content",
+      "score.label.keywords": "Keywords",
+      "score.label.impact": "Impact",
+      "logostrip.label": "Job seekers using LandIt have gone on to interview at companies like",
+      "interview.badge": "WHAT MAKES LANDIT DIFFERENT",
+      "interview.title": "Practice the interview, not just the resume.",
+      "interview.subtitle": "Most resume tools stop at the PDF. LandIt's AI interviewer asks you real questions out loud, listens to your answer, and scores it — so you know where you stand before a human ever does.",
+      "interview.voiceOn": "🔊 Voice on",
+      "interview.seedQuestion": "Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline.",
+      "interview.answerPlaceholder": "Type your answer, or use the mic…",
+      "interview.speakYourAnswer": "Speak your answer",
+      "common.send": "Send",
+      "interview.liveScoring": "Live scoring",
+      "interview.label.clarity": "Clarity",
+      "interview.label.structure": "Structure",
+      "interview.label.specificity": "Specificity",
+      "interview.label.confidence": "Confidence",
+      "interview.tip": "<b>Tip:</b> Answer the question on the left to get real, live feedback here.",
+      "builder.kicker": "RESUME BUILDER",
+      "builder.title": "Type on the left, watch it land on the right.",
+      "builder.subtitle": "This one actually works — fill it in, then download a clean, ATS-friendly PDF. No account needed to try it.",
+      "builder.example.label": "New here? See it filled in:",
+      "builder.example.choose": "Choose a profession…",
+      "builder.example.engineer": "Software Engineer",
+      "builder.example.marketing": "Marketing Manager",
+      "builder.example.nurse": "Registered Nurse",
+      "builder.example.sales": "Sales Representative",
+      "builder.field.name": "Full name",
+      "builder.field.name.placeholder": "e.g. Alicia Moreno",
+      "builder.field.role": "Target role",
+      "builder.field.role.placeholder": "e.g. Product Marketing Manager",
+      "builder.field.contact": "Contact line",
+      "builder.field.contact.placeholder": "e.g. alicia@email.com · Seattle, WA · linkedin.com/in/alicia",
+      "builder.field.photo": "Photo (optional)",
+      "builder.photo.none": "No photo",
+      "builder.photo.upload": "Upload photo",
+      "builder.photo.remove": "Remove",
+      "builder.photo.note": "Some employers and ATS systems prefer resumes without a photo — it's entirely optional.",
+      "builder.field.summary": "Professional summary",
+      "builder.ai.writeWithAI": "✨ Write with AI",
+      "builder.field.summary.placeholder": "A couple of sentences on what you do and what you're looking for next.",
+      "builder.ai.useThis": "Use this",
+      "builder.ai.discard": "Discard",
+      "builder.divider.experience": "EXPERIENCE",
+      "builder.addRole": "+ Add another role",
+      "builder.divider.education": "EDUCATION",
+      "builder.field.edu": "School & degree",
+      "builder.field.edu.placeholder": "e.g. B.S. Marketing, University of Washington, 2019",
+      "builder.divider.skills": "SKILLS",
+      "builder.field.skills": "Skills (comma separated)",
+      "builder.field.skills.placeholder": "e.g. Go-to-market strategy, SQL, Figma, A/B testing",
+      "builder.downloadPdf": "Download as PDF",
+      "builder.template.label": "Template",
+      "builder.preview.yourName": "Your name",
+      "builder.preview.summaryPlaceholder": "Your summary will appear here as you type.",
+      "builder.preview.rolesEmpty": "Your roles will appear here.",
+      "score.kicker": "ATS SCORE",
+      "score.title": "Know exactly what's holding your resume back.",
+      "score.subtitle": "Most resumes are filtered by software before a person ever sees them. LandIt scores yours the same way, section by section.",
+      "score.label.formatting": "Formatting",
+      "score.orderNote": "Ordered by how much each one weighs in a hiring manager's read — content first, formatting last. <a href=\"#\" onclick=\"event.preventDefault(); replayMainRing();\" style=\"color:var(--forest); font-weight:600;\">Replay score animation ↻</a>",
+      "score.quickWins": "Quick wins to raise your score",
+      "target.kicker": "KEYWORD TARGETING",
+      "target.title": "Paste the job post. See what's missing.",
+      "target.subtitle": "LandIt compares your resume against the listing and shows exactly which terms to add — no keyword stuffing required.",
+      "target.field.jd": "Job description",
+      "target.field.jd.placeholder": "Paste a job description to see matched and missing keywords…",
+      "jobs.kicker": "JOB SEARCH",
+      "jobs.title": "Open roles, matched to your resume.",
+      "jobs.subtitle": "Real listings, searched live — see how closely you fit before you apply.",
+      "jobs.field.query": "Role or keywords",
+      "jobs.field.country": "Country",
+      "jobs.field.city": "City (optional)",
+      "jobs.field.city.placeholder": "e.g. Seattle",
+      "jobs.search": "Search jobs",
+      "jobs.coverageNote": "Covers 61 countries across two job-data providers — still not every market, but growing.",
+      "jobs.emptyState": "Enter a role above (or fill in \"Target role\" in the Resume Builder) to see open listings.",
+      "templates.kicker": "TEMPLATES",
+      "templates.title": "Formats that pass the scan and the skim.",
+      "templates.subtitle": "Every template is built to parse cleanly through ATS software first, and read well to a human second.",
+      "templates.clickNote": "Click a template to apply it to your resume above and in the PDF download.",
+      "pricing.kicker": "PRICING",
+      "pricing.title": "Try it free. Keep it if it works.",
+      "pricing.subtitle": "Seven days, full access, then it continues on the plan you pick — cancel anytime before it ends and you won't be charged.",
+      "pricing.trial.tag": "Free trial",
+      "pricing.trial.period": "/ 7 days",
+      "pricing.trial.f1": "✓ Unlimited resume edits",
+      "pricing.trial.f2": "✓ Full ATS score breakdown",
+      "pricing.trial.f3": "✓ 1 keyword-targeted resume",
+      "pricing.trial.f4": "✓ 2 interview practice sessions",
+      "pricing.trial.cardNote": "Card required to start — cancel before day 7 to avoid being charged.",
+      "pricing.monthly.tag": "Monthly",
+      "pricing.monthly.period": "/ month",
+      "pricing.paid.f1": "✓ Everything in the free trial",
+      "pricing.paid.f2": "✓ Unlimited tailored resumes",
+      "pricing.paid.f3": "✓ Unlimited interview practice",
+      "pricing.paid.f4": "✓ Full job search & match scoring",
+      "pricing.paid.f5": "✓ All templates, unlimited downloads",
+      "pricing.monthly.cta": "Continue with Monthly",
+      "pricing.yearly.tag": "Best value",
+      "pricing.yearly.period": "/ year",
+      "pricing.yearly.save": "≈ $7.42/mo — save 43% vs. monthly",
+      "pricing.yearly.cta": "Continue with Yearly",
+      "ctaBand.title": "Your next job is one resume away.",
+      "ctaBand.subtitle": "Start free for seven days, cancel anytime before it ends — no charge, no hassle.",
+      "ctaBand.cta": "Start your free trial",
+      "footer.privacy": "Privacy Policy",
+      "footer.terms": "Terms of Service",
+      "footer.rights": "© LandIt. All rights reserved.",
+      "score.level.strong": "Strong",
+      "score.level.good": "Good",
+      "score.level.needsWork": "Needs work",
+      "score.level.weak": "Weak",
+      "builder.exp.remove": "Remove",
+      "builder.exp.jobTitle": "Job title",
+      "builder.exp.jobTitle.placeholder": "e.g. Marketing Lead",
+      "builder.exp.company": "Company",
+      "builder.exp.company.placeholder": "e.g. Northwind Digital",
+      "builder.exp.startDate": "Start date",
+      "builder.exp.endDate": "End date",
+      "builder.exp.currentlyWorkHere": "I currently work here",
+      "builder.exp.whatDidYouDo": "What did you do? (one line per achievement)",
+      "builder.ai.improveWithAI": "✨ Improve with AI",
+      "builder.exp.bullets.placeholder": "Led go-to-market for a repositioning that grew qualified pipeline by 30%",
+      "upgrade.needAI": "AI-assisted writing needs an active trial or subscription.",
+      "upgrade.needPdf": "Downloading your resume as a PDF needs an active trial or subscription.",
+      "upgrade.needJobs": "Job search needs an active trial or subscription.",
+      "upgrade.needInterview": "The AI mock interview needs an active trial or subscription.",
+      "upgrade.startTrialToContinue": "Start your free 7-day trial to continue.",
+      "upgrade.addCardToStart": "Add a card to start your free trial — you won't be charged until it ends.",
+      "upgrade.trialEndedChoosePlan": "Your trial has ended — choose a plan to keep going.",
+      "builder.ai.needRole": "Add a target role first so the AI knows what to write for.",
+      "builder.ai.needJobTitle": "Add a job title for this role first so the AI knows what to write for.",
+      "builder.ai.writing": "Writing…",
+      "builder.ai.summaryError": "Could not generate a summary right now.",
+      "builder.ai.bulletsError": "Could not generate bullet points right now.",
+      "target.emptyState": "Paste a job description above to see matched and missing keywords.",
+      "score.noQuickWins": "Nice — no quick wins left. Your resume covers everything we check for here.",
+      "tip.needName": "Add your full name at the top.",
+      "tip.needRole": "Add a target role so it's clear what you're applying for.",
+      "tip.needContact": "Add a contact line — email, location, and/or LinkedIn.",
+      "tip.needEmail": "Include an email address in your contact line.",
+      "tip.needSummary": "Add a 2-3 sentence professional summary.",
+      "tip.expandSummary": "Expand your summary to at least a couple of full sentences.",
+      "tip.trimSummary": "Trim your summary — aim for a short paragraph, not a page.",
+      "tip.needExperience": "Add at least one work experience entry.",
+      "tip.missingCompany": "Add the company name for {n} of your roles.",
+      "tip.missingDates": "Add start/end dates for {n} of your roles.",
+      "tip.missingBullets": "Add at least one bullet describing what you did for {n} of your roles.",
+      "tip.noVerb": "{n} of your {total} bullets don't open with a strong action verb (e.g. Led, Built, Reduced) — rewrite them to start with one.",
+      "tip.noMetric": "{n} of your bullets have no numbers — add a metric (%, $, or count) to show real impact.",
+      "tip.needEdu": "Add your education.",
+      "tip.fewSkills": "List a few more skills — you have {n}, aim for at least 6.",
+      "tip.missingKeywords": "Work these keywords from the job description in, if they genuinely apply: {list}.",
+      "tip.pasteJobDescription": "Paste a job description in the Keyword Targeting section below to check for missing keywords.",
+      "tip.longBullets": "{n} of your bullets are very long — break them into shorter, punchier lines.",
+      "tip.strayChars": "Remove bullet characters (•) or tabs from your bullet lines — one achievement per line is enough.",
+      "jobs.noResults": "No matching jobs found. Try a different role or location.",
+      "jobs.untitledRole": "Untitled role",
+      "jobs.matchPct": "{n}% match",
+      "jobs.view": "View",
+      "jobs.enterRole": "Enter a role or keywords to search.",
+      "jobs.searching": "Searching…",
+      "jobs.searchFailed": "Search failed ({status})",
+      "jobs.loadError": "Could not load jobs ({message}).",
+      "interview.requestFailed": "Request failed ({status})",
+      "interview.tipLabel": "Tip",
+      "interview.unreachable": "Could not reach the AI interviewer ({message}).",
+      "common.close": "Close",
+      "common.gotIt": "Got it",
+      "auth.signup": "Sign up",
+      "auth.choosePlan": "Choose your plan",
+      "pricing.yearly.tag2": "Yearly",
+      "auth.save43": "Save 43%",
+      "auth.email": "Email",
+      "auth.password": "Password",
+      "auth.passwordHint": "At least 8 characters, with a letter and a number.",
+      "auth.confirmPassword": "Confirm password",
+      "auth.trialNote": "7 days free, then your card is charged automatically unless you cancel first. We'll email you before it's charged.",
+      "auth.agreeTerms": "By continuing, you agree to LandIt's <a href=\"/terms.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Terms of Service</a> and <a href=\"/privacy.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Privacy Policy</a>.",
+      "auth.checkEmail": "Check your email",
+      "auth.checkEmailBody": "We sent a confirmation link to <strong id=\"auth-success-email\"></strong>. Click it, then log back in here — we'll take you straight to entering your card to start your free trial.",
+      "auth.resend": "Didn't get it? Resend",
+      "account.title": "Account",
+      "account.plan": "Plan",
+      "account.manageBilling": "Manage billing",
+      "account.choosePlan": "Choose a plan",
+      "account.changePassword": "CHANGE PASSWORD",
+      "account.newPassword": "New password",
+      "account.passwordUpdated": "Password updated.",
+      "account.updatePassword": "Update password",
+      "account.dangerZone": "DANGER ZONE",
+      "account.dangerNote": "Permanently deletes your account, resume data, and cancels any active subscription. This can't be undone.",
+      "account.deleteAccount": "Delete account",
+      "auth.notConfigured": "Accounts aren't configured on this deployment yet (missing Supabase URL/key).",
+      "auth.continueToPayment": "Continue to payment",
+      "auth.err.missingFields": "Please enter your email and password.",
+      "auth.err.weakPassword": "Password must be at least 8 characters and include a letter and a number.",
+      "auth.err.passwordsDontMatch": "Passwords don't match.",
+      "auth.err.generic": "Something went wrong. Please try again.",
+      "auth.sending": "Sending…",
+      "auth.resendFailed": "Could not resend — try again",
+      "auth.resendSent": "Sent! Check your inbox",
+      "account.status.active": "LandIt Pro (active)",
+      "account.status.pastDue": "Past due — update your payment method",
+      "account.status.canceled": "Canceled",
+      "account.status.trialDaysLeft": "Free trial — {n} day(s) left (auto-renews)",
+      "account.status.trialEnded": "Trial ended",
+      "account.status.trialNotStarted": "Trial not started — add a card to begin",
+      "account.loading": "Loading…",
+      "account.billingPortalError": "Could not open billing portal: {message}",
+      "account.passwordUpdateError": "Could not update password.",
+      "account.deleteConfirm1": "Delete your LandIt account? This permanently removes your resume data and cancels any active subscription. This cannot be undone.",
+      "account.deleteConfirm2": "Are you sure? Type-and-confirm: this is your last chance to back out.",
+      "account.deleting": "Deleting…",
+      "account.deleted": "Your account has been deleted.",
+      "account.deleteError": "Could not delete account: {message}",
+      "nav.badge.pro": "Pro",
+      "nav.badge.daysLeft": "{n}d left in trial",
+      "account.status.trialNotStartedShort": "Trial not started",
+      "nav.accountSettings": "Account settings",
+      "nav.logout": "Log out",
+      "builder.example.replaceConfirm": "This will replace what you've already entered with an example resume. Continue?",
+      "checkout.redirecting": "Redirecting…",
+      "checkout.failed": "Checkout failed ({status})",
+      "checkout.startError": "Could not start checkout: {message}",
+      "checkout.success": "You're on LandIt Pro! It can take a few seconds for your account to update.",
+      "checkout.canceled": "Checkout was canceled — no charge was made.",
+      "interview.voiceOff": "🔇 Voice off",
+    },
+    tr: {
+      "nav.link.interview": "AI Mülakat",
+      "nav.link.builder": "Özgeçmiş Oluşturucu",
+      "nav.link.score": "ATS Puanı",
+      "nav.link.jobs": "İş Arama",
+      "nav.link.pricing": "Fiyatlandırma",
+      "nav.login": "Giriş yap",
+      "nav.startTrial": "Ücretsiz denemeyi başlat",
+      "hero.eyebrow": "✦ Artık canlı AI mülakat provalarıyla",
+      "hero.title": "İşe gerçekten yarayan<br>özgeçmişi yazın.",
+      "hero.subtitle": "LandIt her başvuru için özgeçmişinizi yazar, puanlar ve uyarlar — sonra sizi bir AI mülakatından geçirir, böylece umutla değil hazırlıkla gidersiniz.",
+      "hero.cta.trial": "7 günlük ücretsiz denemeyi başlat",
+      "hero.cta.tryInterview": "Bir AI mülakatı deneyin",
+      "hero.trialNote": "İlk 7 gün ücretsiz, ardından otomatik olarak devam eder — deneme süreniz bitmeden istediğiniz zaman iptal ederseniz ücretlendirilmezsiniz.",
+      "hero.clickAndSee": "👆 Tıkla ve gör",
+      "hero.tab.build": "Oluştur",
+      "hero.tab.score": "Puan",
+      "hero.tab.target": "Hedefle",
+      "hero.tab.practice": "Pratik",
+      "score.label.content": "İçerik",
+      "score.label.keywords": "Anahtar Kelimeler",
+      "score.label.impact": "Etki",
+      "logostrip.label": "LandIt kullanan iş arayanlar şu şirketlerde mülakata girdi",
+      "interview.badge": "LANDIT'İ FARKLI KILAN NEDİR",
+      "interview.title": "Sadece özgeçmişi değil, mülakatı da pratik yapın.",
+      "interview.subtitle": "Çoğu özgeçmiş aracı PDF'de durur. LandIt'in AI mülakatçısı size gerçek soruları sesli sorar, cevabınızı dinler ve puanlar — böylece bir insan görmeden önce nerede durduğunuzu bilirsiniz.",
+      "interview.voiceOn": "🔊 Ses açık",
+      "interview.seedQuestion": "Özgeçmişinizden bir soruyla başlayalım. Dar bir teslim tarihi altında bir şeyi hayata geçirmeniz gereken bir zamandan bahsedin.",
+      "interview.answerPlaceholder": "Cevabınızı yazın veya mikrofonu kullanın…",
+      "interview.speakYourAnswer": "Cevabınızı söyleyin",
+      "common.send": "Gönder",
+      "interview.liveScoring": "Canlı puanlama",
+      "interview.label.clarity": "Netlik",
+      "interview.label.structure": "Yapı",
+      "interview.label.specificity": "Somutluk",
+      "interview.label.confidence": "Özgüven",
+      "interview.tip": "<b>İpucu:</b> Soldaki soruyu cevaplayın, burada gerçek zamanlı geri bildirim alın.",
+      "builder.kicker": "ÖZGEÇMİŞ OLUŞTURUCU",
+      "builder.title": "Solda yazın, sağda anında oluşsun.",
+      "builder.subtitle": "Bu gerçekten çalışıyor — doldurun, ardından temiz, ATS uyumlu bir PDF indirin. Denemek için hesap gerekmez.",
+      "builder.example.label": "Yeni misiniz? Doldurulmuş halini görün:",
+      "builder.example.choose": "Bir meslek seçin…",
+      "builder.example.engineer": "Yazılım Mühendisi",
+      "builder.example.marketing": "Pazarlama Müdürü",
+      "builder.example.nurse": "Kayıtlı Hemşire",
+      "builder.example.sales": "Satış Temsilcisi",
+      "builder.field.name": "Ad soyad",
+      "builder.field.name.placeholder": "örn. Ayşe Yılmaz",
+      "builder.field.role": "Hedef pozisyon",
+      "builder.field.role.placeholder": "örn. Ürün Pazarlama Müdürü",
+      "builder.field.contact": "İletişim bilgisi",
+      "builder.field.contact.placeholder": "örn. ayse@email.com · İstanbul · linkedin.com/in/ayse",
+      "builder.field.photo": "Fotoğraf (isteğe bağlı)",
+      "builder.photo.none": "Fotoğraf yok",
+      "builder.photo.upload": "Fotoğraf yükle",
+      "builder.photo.remove": "Kaldır",
+      "builder.photo.note": "Bazı işverenler ve ATS sistemleri fotoğrafsız özgeçmişleri tercih eder — tamamen isteğe bağlıdır.",
+      "builder.field.summary": "Profesyonel özet",
+      "builder.ai.writeWithAI": "✨ AI ile yaz",
+      "builder.field.summary.placeholder": "Ne yaptığınız ve bundan sonra ne aradığınız hakkında birkaç cümle.",
+      "builder.ai.useThis": "Bunu kullan",
+      "builder.ai.discard": "Vazgeç",
+      "builder.divider.experience": "DENEYİM",
+      "builder.addRole": "+ Başka bir pozisyon ekle",
+      "builder.divider.education": "EĞİTİM",
+      "builder.field.edu": "Okul ve derece",
+      "builder.field.edu.placeholder": "örn. Pazarlama Lisans, İstanbul Üniversitesi, 2019",
+      "builder.divider.skills": "YETENEKLER",
+      "builder.field.skills": "Yetenekler (virgülle ayrılmış)",
+      "builder.field.skills.placeholder": "örn. Pazara giriş stratejisi, SQL, Figma, A/B testi",
+      "builder.downloadPdf": "PDF olarak indir",
+      "builder.template.label": "Şablon",
+      "builder.preview.yourName": "Adınız Soyadınız",
+      "builder.preview.summaryPlaceholder": "Yazdıkça özetiniz burada görünecek.",
+      "builder.preview.rolesEmpty": "Pozisyonlarınız burada görünecek.",
+      "score.kicker": "ATS PUANI",
+      "score.title": "Özgeçmişinizi neyin geride tuttuğunu tam olarak öğrenin.",
+      "score.subtitle": "Çoğu özgeçmiş bir insana ulaşmadan önce yazılım tarafından elenir. LandIt sizinkini de aynı şekilde, bölüm bölüm puanlar.",
+      "score.label.formatting": "Biçimlendirme",
+      "score.orderNote": "Her birinin bir işe alım yöneticisinin gözünde ne kadar ağırlığı olduğuna göre sıralanmıştır — önce içerik, en son biçimlendirme. <a href=\"#\" onclick=\"event.preventDefault(); replayMainRing();\" style=\"color:var(--forest); font-weight:600;\">Puan animasyonunu tekrar oynat ↻</a>",
+      "score.quickWins": "Puanınızı hızlıca yükseltecek adımlar",
+      "target.kicker": "ANAHTAR KELİME HEDEFLEME",
+      "target.title": "İş ilanını yapıştırın. Eksik olanı görün.",
+      "target.subtitle": "LandIt özgeçmişinizi ilanla karşılaştırır ve tam olarak hangi terimleri eklemeniz gerektiğini gösterir — anahtar kelime doldurmaya gerek yok.",
+      "target.field.jd": "İş tanımı",
+      "target.field.jd.placeholder": "Eşleşen ve eksik anahtar kelimeleri görmek için bir iş tanımı yapıştırın…",
+      "jobs.kicker": "İŞ ARAMA",
+      "jobs.title": "Özgeçmişinizle eşleşen açık pozisyonlar.",
+      "jobs.subtitle": "Gerçek ilanlar, canlı olarak aranır — başvurmadan önce ne kadar uyduğunuzu görün.",
+      "jobs.field.query": "Pozisyon veya anahtar kelimeler",
+      "jobs.field.country": "Ülke",
+      "jobs.field.city": "Şehir (isteğe bağlı)",
+      "jobs.field.city.placeholder": "örn. İstanbul",
+      "jobs.search": "İş ara",
+      "jobs.coverageNote": "İki iş verisi sağlayıcısı üzerinden 61 ülkeyi kapsıyor — henüz her pazar değil, ama büyüyor.",
+      "jobs.emptyState": "Açık ilanları görmek için yukarıya bir pozisyon girin (veya Özgeçmiş Oluşturucu'da \"Hedef pozisyon\" alanını doldurun).",
+      "templates.kicker": "ŞABLONLAR",
+      "templates.title": "Hem taramadan hem göz gezdirmeden geçen biçimler.",
+      "templates.subtitle": "Her şablon önce ATS yazılımı tarafından temiz şekilde okunacak, sonra da bir insana iyi görünecek şekilde tasarlandı.",
+      "templates.clickNote": "Yukarıdaki özgeçmişinize ve PDF indirmesine uygulamak için bir şablona tıklayın.",
+      "pricing.kicker": "FİYATLANDIRMA",
+      "pricing.title": "Ücretsiz deneyin. İşe yararsa devam edin.",
+      "pricing.subtitle": "Yedi gün tam erişim, ardından seçtiğiniz planla devam eder — bitmeden istediğiniz zaman iptal ederseniz ücretlendirilmezsiniz.",
+      "pricing.trial.tag": "Ücretsiz deneme",
+      "pricing.trial.period": "/ 7 gün",
+      "pricing.trial.f1": "✓ Sınırsız özgeçmiş düzenleme",
+      "pricing.trial.f2": "✓ Tam ATS puan dökümü",
+      "pricing.trial.f3": "✓ 1 anahtar kelime hedefli özgeçmiş",
+      "pricing.trial.f4": "✓ 2 mülakat pratiği oturumu",
+      "pricing.trial.cardNote": "Başlamak için kart gerekir — ücretlendirilmemek için 7. günden önce iptal edin.",
+      "pricing.monthly.tag": "Aylık",
+      "pricing.monthly.period": "/ ay",
+      "pricing.paid.f1": "✓ Ücretsiz denemedeki her şey",
+      "pricing.paid.f2": "✓ Sınırsız özelleştirilmiş özgeçmiş",
+      "pricing.paid.f3": "✓ Sınırsız mülakat pratiği",
+      "pricing.paid.f4": "✓ Tam iş arama ve eşleşme puanlaması",
+      "pricing.paid.f5": "✓ Tüm şablonlar, sınırsız indirme",
+      "pricing.monthly.cta": "Aylık ile devam et",
+      "pricing.yearly.tag": "En avantajlı",
+      "pricing.yearly.period": "/ yıl",
+      "pricing.yearly.save": "≈ 7,42 $/ay — aylığa göre %43 tasarruf",
+      "pricing.yearly.cta": "Yıllık ile devam et",
+      "ctaBand.title": "Bir sonraki işiniz sadece bir özgeçmiş uzağınızda.",
+      "ctaBand.subtitle": "Yedi gün ücretsiz başlayın, bitmeden istediğiniz zaman iptal edin — ücret yok, zahmet yok.",
+      "ctaBand.cta": "Ücretsiz denemenizi başlatın",
+      "footer.privacy": "Gizlilik Politikası",
+      "footer.terms": "Kullanım Şartları",
+      "footer.rights": "© LandIt. Tüm hakları saklıdır.",
+      "score.level.strong": "Güçlü",
+      "score.level.good": "İyi",
+      "score.level.needsWork": "Geliştirilmeli",
+      "score.level.weak": "Zayıf",
+      "builder.exp.remove": "Kaldır",
+      "builder.exp.jobTitle": "Pozisyon adı",
+      "builder.exp.jobTitle.placeholder": "örn. Pazarlama Sorumlusu",
+      "builder.exp.company": "Şirket",
+      "builder.exp.company.placeholder": "örn. Kuzeyyıldızı Dijital",
+      "builder.exp.startDate": "Başlangıç tarihi",
+      "builder.exp.endDate": "Bitiş tarihi",
+      "builder.exp.currentlyWorkHere": "Şu anda burada çalışıyorum",
+      "builder.exp.whatDidYouDo": "Ne yaptınız? (her başarı için bir satır)",
+      "builder.ai.improveWithAI": "✨ AI ile geliştir",
+      "builder.exp.bullets.placeholder": "Nitelikli fırsat hattını %30 artıran bir yeniden konumlandırmanın pazara giriş sürecini yönettim",
+      "upgrade.needAI": "AI destekli yazım için aktif bir deneme veya abonelik gerekir.",
+      "upgrade.needPdf": "Özgeçmişinizi PDF olarak indirmek için aktif bir deneme veya abonelik gerekir.",
+      "upgrade.needJobs": "İş arama için aktif bir deneme veya abonelik gerekir.",
+      "upgrade.needInterview": "AI mülakat provası için aktif bir deneme veya abonelik gerekir.",
+      "upgrade.startTrialToContinue": "Devam etmek için 7 günlük ücretsiz denemenizi başlatın.",
+      "upgrade.addCardToStart": "Ücretsiz denemenizi başlatmak için bir kart ekleyin — süre bitene kadar ücretlendirilmezsiniz.",
+      "upgrade.trialEndedChoosePlan": "Deneme süreniz sona erdi — devam etmek için bir plan seçin.",
+      "builder.ai.needRole": "AI'ın ne için yazacağını bilmesi için önce bir hedef pozisyon girin.",
+      "builder.ai.needJobTitle": "AI'ın ne için yazacağını bilmesi için önce bu pozisyon için bir unvan girin.",
+      "builder.ai.writing": "Yazılıyor…",
+      "builder.ai.summaryError": "Şu anda özet oluşturulamadı.",
+      "builder.ai.bulletsError": "Şu anda madde işaretli metin oluşturulamadı.",
+      "target.emptyState": "Eşleşen ve eksik anahtar kelimeleri görmek için yukarıya bir iş tanımı yapıştırın.",
+      "score.noQuickWins": "Harika — kolay kazanım kalmadı. Özgeçmişiniz burada kontrol ettiğimiz her şeyi kapsıyor.",
+      "tip.needName": "Üstte ad soyadınızı ekleyin.",
+      "tip.needRole": "Neye başvurduğunuzun belli olması için bir hedef pozisyon ekleyin.",
+      "tip.needContact": "Bir iletişim bilgisi ekleyin — e-posta, konum ve/veya LinkedIn.",
+      "tip.needEmail": "İletişim bilginize bir e-posta adresi ekleyin.",
+      "tip.needSummary": "2-3 cümlelik profesyonel bir özet ekleyin.",
+      "tip.expandSummary": "Özetinizi en az birkaç tam cümleye genişletin.",
+      "tip.trimSummary": "Özetinizi kısaltın — bir sayfa değil, kısa bir paragraf hedefleyin.",
+      "tip.needExperience": "En az bir iş deneyimi girin.",
+      "tip.missingCompany": "{n} pozisyonunuz için şirket adı ekleyin.",
+      "tip.missingDates": "{n} pozisyonunuz için başlangıç/bitiş tarihi ekleyin.",
+      "tip.missingBullets": "{n} pozisyonunuz için ne yaptığınızı açıklayan en az bir madde ekleyin.",
+      "tip.noVerb": "{total} maddenizden {n} tanesi güçlü bir eylem fiiliyle başlamıyor (örn. Yönetti, Kurdu, Azalttı) — bunları güçlü bir fiille başlayacak şekilde yeniden yazın.",
+      "tip.noMetric": "{n} maddenizde sayı yok — gerçek etkiyi göstermek için bir metrik (%, $ veya sayı) ekleyin.",
+      "tip.needEdu": "Eğitim bilginizi ekleyin.",
+      "tip.fewSkills": "Birkaç yetenek daha ekleyin — şu an {n} tane var, en az 6 hedefleyin.",
+      "tip.missingKeywords": "Gerçekten geçerliyse iş tanımındaki şu anahtar kelimeleri ekleyin: {list}.",
+      "tip.pasteJobDescription": "Eksik anahtar kelimeleri kontrol etmek için aşağıdaki Anahtar Kelime Hedefleme bölümüne bir iş tanımı yapıştırın.",
+      "tip.longBullets": "{n} maddeniz çok uzun — bunları daha kısa ve etkili satırlara bölün.",
+      "tip.strayChars": "Madde satırlarınızdan madde işareti (•) veya sekme karakterlerini kaldırın — satır başına bir başarı yeterli.",
+      "jobs.noResults": "Eşleşen iş bulunamadı. Farklı bir pozisyon veya konum deneyin.",
+      "jobs.untitledRole": "Adsız pozisyon",
+      "jobs.matchPct": "%{n} eşleşme",
+      "jobs.view": "Görüntüle",
+      "jobs.enterRole": "Aramak için bir pozisyon veya anahtar kelime girin.",
+      "jobs.searching": "Aranıyor…",
+      "jobs.searchFailed": "Arama başarısız oldu ({status})",
+      "jobs.loadError": "İşler yüklenemedi ({message}).",
+      "interview.requestFailed": "İstek başarısız oldu ({status})",
+      "interview.tipLabel": "İpucu",
+      "interview.unreachable": "AI mülakatçısına ulaşılamadı ({message}).",
+      "common.close": "Kapat",
+      "common.gotIt": "Anladım",
+      "auth.signup": "Kaydol",
+      "auth.choosePlan": "Planınızı seçin",
+      "pricing.yearly.tag2": "Yıllık",
+      "auth.save43": "%43 tasarruf",
+      "auth.email": "E-posta",
+      "auth.password": "Şifre",
+      "auth.passwordHint": "En az 8 karakter, bir harf ve bir rakam içermeli.",
+      "auth.confirmPassword": "Şifreyi onayla",
+      "auth.trialNote": "7 gün ücretsiz, ardından önce iptal etmezseniz kartınız otomatik olarak ücretlendirilir. Ücretlendirilmeden önce size e-posta göndereceğiz.",
+      "auth.agreeTerms": "Devam ederek LandIt'in <a href=\"/terms.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Kullanım Şartları</a>'nı ve <a href=\"/privacy.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Gizlilik Politikası</a>'nı kabul etmiş olursunuz.",
+      "auth.checkEmail": "E-postanızı kontrol edin",
+      "auth.checkEmailBody": "Şuraya bir onay bağlantısı gönderdik: <strong id=\"auth-success-email\"></strong>. Tıklayın, ardından buradan tekrar giriş yapın — sizi doğrudan ücretsiz denemenizi başlatmak için kart girişine yönlendireceğiz.",
+      "auth.resend": "Almadınız mı? Yeniden gönder",
+      "account.title": "Hesap",
+      "account.plan": "Plan",
+      "account.manageBilling": "Faturalandırmayı yönet",
+      "account.choosePlan": "Bir plan seçin",
+      "account.changePassword": "ŞİFREYİ DEĞİŞTİR",
+      "account.newPassword": "Yeni şifre",
+      "account.passwordUpdated": "Şifre güncellendi.",
+      "account.updatePassword": "Şifreyi güncelle",
+      "account.dangerZone": "TEHLİKELİ BÖLGE",
+      "account.dangerNote": "Hesabınızı, özgeçmiş verilerinizi kalıcı olarak siler ve aktif aboneliği iptal eder. Bu geri alınamaz.",
+      "account.deleteAccount": "Hesabı sil",
+      "auth.notConfigured": "Hesaplar bu dağıtımda henüz yapılandırılmadı (Supabase URL/anahtarı eksik).",
+      "auth.continueToPayment": "Ödemeye devam et",
+      "auth.err.missingFields": "Lütfen e-posta ve şifrenizi girin.",
+      "auth.err.weakPassword": "Şifre en az 8 karakter olmalı ve bir harf ile bir rakam içermelidir.",
+      "auth.err.passwordsDontMatch": "Şifreler eşleşmiyor.",
+      "auth.err.generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+      "auth.sending": "Gönderiliyor…",
+      "auth.resendFailed": "Yeniden gönderilemedi — tekrar deneyin",
+      "auth.resendSent": "Gönderildi! Gelen kutunuzu kontrol edin",
+      "account.status.active": "LandIt Pro (aktif)",
+      "account.status.pastDue": "Ödeme gecikti — ödeme yönteminizi güncelleyin",
+      "account.status.canceled": "İptal edildi",
+      "account.status.trialDaysLeft": "Ücretsiz deneme — {n} gün kaldı (otomatik yenilenir)",
+      "account.status.trialEnded": "Deneme süresi sona erdi",
+      "account.status.trialNotStarted": "Deneme başlatılmadı — başlamak için bir kart ekleyin",
+      "account.loading": "Yükleniyor…",
+      "account.billingPortalError": "Faturalandırma portalı açılamadı: {message}",
+      "account.passwordUpdateError": "Şifre güncellenemedi.",
+      "account.deleteConfirm1": "LandIt hesabınızı silmek istiyor musunuz? Bu, özgeçmiş verilerinizi kalıcı olarak kaldırır ve aktif aboneliği iptal eder. Bu geri alınamaz.",
+      "account.deleteConfirm2": "Emin misiniz? Bu, vazgeçmek için son şansınız.",
+      "account.deleting": "Siliniyor…",
+      "account.deleted": "Hesabınız silindi.",
+      "account.deleteError": "Hesap silinemedi: {message}",
+      "nav.badge.pro": "Pro",
+      "nav.badge.daysLeft": "Denemede {n} gün kaldı",
+      "account.status.trialNotStartedShort": "Deneme başlatılmadı",
+      "nav.accountSettings": "Hesap ayarları",
+      "nav.logout": "Çıkış yap",
+      "builder.example.replaceConfirm": "Bu, şu ana kadar girdiklerinizi örnek bir özgeçmişle değiştirecek. Devam edilsin mi?",
+      "checkout.redirecting": "Yönlendiriliyor…",
+      "checkout.failed": "Ödeme başarısız oldu ({status})",
+      "checkout.startError": "Ödeme başlatılamadı: {message}",
+      "checkout.success": "Artık LandIt Pro'dasınız! Hesabınızın güncellenmesi birkaç saniye sürebilir.",
+      "checkout.canceled": "Ödeme iptal edildi — hiçbir ücret alınmadı.",
+      "interview.voiceOff": "🔇 Ses kapalı",
+    },
+    de: {
+      "nav.link.interview": "KI-Interview",
+      "nav.link.builder": "Lebenslauf-Ersteller",
+      "nav.link.score": "ATS-Bewertung",
+      "nav.link.jobs": "Jobsuche",
+      "nav.link.pricing": "Preise",
+      "nav.login": "Anmelden",
+      "nav.startTrial": "Kostenlos testen",
+      "hero.eyebrow": "✦ Jetzt mit Live-KI-Vorstellungsgesprächen",
+      "hero.title": "Schreiben Sie den Lebenslauf,<br>der den Job wirklich bringt.",
+      "hero.subtitle": "LandIt schreibt, bewertet und passt Ihren Lebenslauf für jede Bewerbung an — und führt Sie anschließend durch ein KI-Interview, damit Sie vorbereitet statt hoffend antreten.",
+      "hero.cta.trial": "Kostenlose 7-Tage-Testphase starten",
+      "hero.cta.tryInterview": "KI-Interview ausprobieren",
+      "hero.trialNote": "7 Tage kostenlos, danach läuft es automatisch weiter — kündigen Sie jederzeit vor Ablauf der Testphase, dann wird Ihnen nichts berechnet.",
+      "hero.clickAndSee": "👆 Klicken und ansehen",
+      "hero.tab.build": "Erstellen",
+      "hero.tab.score": "Bewertung",
+      "hero.tab.target": "Ziel",
+      "hero.tab.practice": "Üben",
+      "score.label.content": "Inhalt",
+      "score.label.keywords": "Schlüsselwörter",
+      "score.label.impact": "Wirkung",
+      "logostrip.label": "Jobsuchende, die LandIt nutzen, wurden u. a. bei folgenden Unternehmen zu Vorstellungsgesprächen eingeladen",
+      "interview.badge": "WAS LANDIT ANDERS MACHT",
+      "interview.title": "Üben Sie das Interview, nicht nur den Lebenslauf.",
+      "interview.subtitle": "Die meisten Lebenslauf-Tools hören beim PDF auf. LandIts KI-Interviewer stellt Ihnen echte Fragen laut, hört sich Ihre Antwort an und bewertet sie — so wissen Sie, wo Sie stehen, bevor es ein Mensch tut.",
+      "interview.voiceOn": "🔊 Sprachausgabe an",
+      "interview.seedQuestion": "Beginnen wir mit einer Frage zu Ihrem Lebenslauf. Erzählen Sie mir von einer Situation, in der Sie unter engem Zeitdruck etwas auf den Weg bringen mussten.",
+      "interview.answerPlaceholder": "Antwort eingeben oder Mikrofon nutzen …",
+      "interview.speakYourAnswer": "Antwort sprechen",
+      "common.send": "Senden",
+      "interview.liveScoring": "Live-Bewertung",
+      "interview.label.clarity": "Klarheit",
+      "interview.label.structure": "Struktur",
+      "interview.label.specificity": "Konkretheit",
+      "interview.label.confidence": "Selbstbewusstsein",
+      "interview.tip": "<b>Tipp:</b> Beantworten Sie die Frage links, um hier echtes Live-Feedback zu erhalten.",
+      "builder.kicker": "LEBENSLAUF-ERSTELLER",
+      "builder.title": "Links tippen, rechts live sehen.",
+      "builder.subtitle": "Das funktioniert wirklich — ausfüllen und ein sauberes, ATS-freundliches PDF herunterladen. Kein Konto zum Ausprobieren nötig.",
+      "builder.example.label": "Neu hier? Sehen Sie ein ausgefülltes Beispiel:",
+      "builder.example.choose": "Beruf wählen …",
+      "builder.example.engineer": "Softwareentwickler",
+      "builder.example.marketing": "Marketingmanager",
+      "builder.example.nurse": "Examinierte Krankenpflegekraft",
+      "builder.example.sales": "Vertriebsmitarbeiter",
+      "builder.field.name": "Vollständiger Name",
+      "builder.field.name.placeholder": "z. B. Anna Müller",
+      "builder.field.role": "Zielposition",
+      "builder.field.role.placeholder": "z. B. Produktmarketing-Manager",
+      "builder.field.contact": "Kontaktzeile",
+      "builder.field.contact.placeholder": "z. B. anna@email.com · Berlin · linkedin.com/in/anna",
+      "builder.field.photo": "Foto (optional)",
+      "builder.photo.none": "Kein Foto",
+      "builder.photo.upload": "Foto hochladen",
+      "builder.photo.remove": "Entfernen",
+      "builder.photo.note": "Manche Arbeitgeber und ATS-Systeme bevorzugen Lebensläufe ohne Foto — es ist völlig optional.",
+      "builder.field.summary": "Berufliches Profil",
+      "builder.ai.writeWithAI": "✨ Mit KI schreiben",
+      "builder.field.summary.placeholder": "Ein paar Sätze darüber, was Sie tun und wonach Sie als Nächstes suchen.",
+      "builder.ai.useThis": "Diesen verwenden",
+      "builder.ai.discard": "Verwerfen",
+      "builder.divider.experience": "BERUFSERFAHRUNG",
+      "builder.addRole": "+ Weitere Position hinzufügen",
+      "builder.divider.education": "AUSBILDUNG",
+      "builder.field.edu": "Schule & Abschluss",
+      "builder.field.edu.placeholder": "z. B. B.Sc. Marketing, Universität Hamburg, 2019",
+      "builder.divider.skills": "FÄHIGKEITEN",
+      "builder.field.skills": "Fähigkeiten (durch Komma getrennt)",
+      "builder.field.skills.placeholder": "z. B. Markteinführungsstrategie, SQL, Figma, A/B-Tests",
+      "builder.downloadPdf": "Als PDF herunterladen",
+      "builder.template.label": "Vorlage",
+      "builder.preview.yourName": "Ihr Name",
+      "builder.preview.summaryPlaceholder": "Ihr Profil erscheint hier, während Sie tippen.",
+      "builder.preview.rolesEmpty": "Ihre Positionen erscheinen hier.",
+      "score.kicker": "ATS-BEWERTUNG",
+      "score.title": "Erfahren Sie genau, was Ihren Lebenslauf zurückhält.",
+      "score.subtitle": "Die meisten Lebensläufe werden von Software gefiltert, bevor sie ein Mensch überhaupt sieht. LandIt bewertet Ihren genauso, Abschnitt für Abschnitt.",
+      "score.label.formatting": "Formatierung",
+      "score.orderNote": "Sortiert danach, wie stark jeder Punkt beim Lesen durch eine Personalverantwortliche Person ins Gewicht fällt — Inhalt zuerst, Formatierung zuletzt. <a href=\"#\" onclick=\"event.preventDefault(); replayMainRing();\" style=\"color:var(--forest); font-weight:600;\">Bewertungsanimation wiederholen ↻</a>",
+      "score.quickWins": "Schnelle Verbesserungen für Ihre Bewertung",
+      "target.kicker": "SCHLÜSSELWORT-ABGLEICH",
+      "target.title": "Stellenanzeige einfügen. Sehen, was fehlt.",
+      "target.subtitle": "LandIt vergleicht Ihren Lebenslauf mit der Anzeige und zeigt genau, welche Begriffe fehlen — kein Keyword-Stuffing nötig.",
+      "target.field.jd": "Stellenbeschreibung",
+      "target.field.jd.placeholder": "Stellenbeschreibung einfügen, um passende und fehlende Schlüsselwörter zu sehen …",
+      "jobs.kicker": "JOBSUCHE",
+      "jobs.title": "Offene Stellen, abgeglichen mit Ihrem Lebenslauf.",
+      "jobs.subtitle": "Echte Stellenanzeigen, live durchsucht — sehen Sie vor der Bewerbung, wie gut Sie passen.",
+      "jobs.field.query": "Position oder Stichwörter",
+      "jobs.field.country": "Land",
+      "jobs.field.city": "Stadt (optional)",
+      "jobs.field.city.placeholder": "z. B. Berlin",
+      "jobs.search": "Jobs suchen",
+      "jobs.coverageNote": "Deckt 61 Länder über zwei Jobdaten-Anbieter ab — noch nicht jeden Markt, aber wachsend.",
+      "jobs.emptyState": "Geben Sie oben eine Position ein (oder füllen Sie „Zielposition\" im Lebenslauf-Ersteller aus), um offene Stellen zu sehen.",
+      "templates.kicker": "VORLAGEN",
+      "templates.title": "Formate, die den Scan und den schnellen Blick bestehen.",
+      "templates.subtitle": "Jede Vorlage ist so gestaltet, dass sie zuerst sauber von ATS-Software gelesen wird und zweitens gut für Menschen lesbar ist.",
+      "templates.clickNote": "Klicken Sie auf eine Vorlage, um sie auf Ihren Lebenslauf oben und den PDF-Download anzuwenden.",
+      "pricing.kicker": "PREISE",
+      "pricing.title": "Kostenlos testen. Behalten, wenn es funktioniert.",
+      "pricing.subtitle": "Sieben Tage vollen Zugriff, danach läuft es mit dem gewählten Plan weiter — jederzeit vor Ablauf kündbar, dann keine Kosten.",
+      "pricing.trial.tag": "Kostenlose Testphase",
+      "pricing.trial.period": "/ 7 Tage",
+      "pricing.trial.f1": "✓ Unbegrenzte Lebenslauf-Bearbeitungen",
+      "pricing.trial.f2": "✓ Vollständige ATS-Bewertungsübersicht",
+      "pricing.trial.f3": "✓ 1 schlüsselwortoptimierter Lebenslauf",
+      "pricing.trial.f4": "✓ 2 Interview-Übungssitzungen",
+      "pricing.trial.cardNote": "Kreditkarte zum Start erforderlich — vor Tag 7 kündigen, um keine Kosten zu verursachen.",
+      "pricing.monthly.tag": "Monatlich",
+      "pricing.monthly.period": "/ Monat",
+      "pricing.paid.f1": "✓ Alles aus der kostenlosen Testphase",
+      "pricing.paid.f2": "✓ Unbegrenzt angepasste Lebensläufe",
+      "pricing.paid.f3": "✓ Unbegrenztes Interviewtraining",
+      "pricing.paid.f4": "✓ Vollständige Jobsuche & Match-Bewertung",
+      "pricing.paid.f5": "✓ Alle Vorlagen, unbegrenzte Downloads",
+      "pricing.monthly.cta": "Mit Monatsabo fortfahren",
+      "pricing.yearly.tag": "Bestes Angebot",
+      "pricing.yearly.period": "/ Jahr",
+      "pricing.yearly.save": "≈ 7,42 $/Monat — 43 % Ersparnis ggü. monatlich",
+      "pricing.yearly.cta": "Mit Jahresabo fortfahren",
+      "ctaBand.title": "Ihr nächster Job ist nur einen Lebenslauf entfernt.",
+      "ctaBand.subtitle": "Sieben Tage kostenlos starten, jederzeit vor Ablauf kündbar — keine Kosten, kein Aufwand.",
+      "ctaBand.cta": "Kostenlose Testphase starten",
+      "footer.privacy": "Datenschutzrichtlinie",
+      "footer.terms": "Nutzungsbedingungen",
+      "footer.rights": "© LandIt. Alle Rechte vorbehalten.",
+      "score.level.strong": "Stark",
+      "score.level.good": "Gut",
+      "score.level.needsWork": "Verbesserungsbedürftig",
+      "score.level.weak": "Schwach",
+      "builder.exp.remove": "Entfernen",
+      "builder.exp.jobTitle": "Berufsbezeichnung",
+      "builder.exp.jobTitle.placeholder": "z. B. Marketing-Leiter",
+      "builder.exp.company": "Unternehmen",
+      "builder.exp.company.placeholder": "z. B. Nordwind Digital",
+      "builder.exp.startDate": "Startdatum",
+      "builder.exp.endDate": "Enddatum",
+      "builder.exp.currentlyWorkHere": "Ich arbeite derzeit hier",
+      "builder.exp.whatDidYouDo": "Was haben Sie getan? (eine Zeile pro Erfolg)",
+      "builder.ai.improveWithAI": "✨ Mit KI verbessern",
+      "builder.exp.bullets.placeholder": "Leitete die Markteinführung einer Neupositionierung, die die qualifizierte Pipeline um 30 % steigerte",
+      "upgrade.needAI": "KI-gestütztes Schreiben erfordert eine aktive Testphase oder ein Abonnement.",
+      "upgrade.needPdf": "Der Download Ihres Lebenslaufs als PDF erfordert eine aktive Testphase oder ein Abonnement.",
+      "upgrade.needJobs": "Die Jobsuche erfordert eine aktive Testphase oder ein Abonnement.",
+      "upgrade.needInterview": "Das KI-Vorstellungsgespräch erfordert eine aktive Testphase oder ein Abonnement.",
+      "upgrade.startTrialToContinue": "Starten Sie Ihre kostenlose 7-Tage-Testphase, um fortzufahren.",
+      "upgrade.addCardToStart": "Fügen Sie eine Karte hinzu, um Ihre kostenlose Testphase zu starten — Sie werden erst nach deren Ende belastet.",
+      "upgrade.trialEndedChoosePlan": "Ihre Testphase ist beendet — wählen Sie einen Plan, um fortzufahren.",
+      "builder.ai.needRole": "Geben Sie zuerst eine Zielposition ein, damit die KI weiß, wofür sie schreiben soll.",
+      "builder.ai.needJobTitle": "Geben Sie zuerst eine Berufsbezeichnung für diese Position ein, damit die KI weiß, wofür sie schreiben soll.",
+      "builder.ai.writing": "Wird geschrieben …",
+      "builder.ai.summaryError": "Es konnte gerade kein Profil erstellt werden.",
+      "builder.ai.bulletsError": "Es konnten gerade keine Stichpunkte erstellt werden.",
+      "target.emptyState": "Fügen Sie oben eine Stellenbeschreibung ein, um passende und fehlende Schlüsselwörter zu sehen.",
+      "score.noQuickWins": "Klasse — keine schnellen Verbesserungen mehr übrig. Ihr Lebenslauf deckt alles ab, was wir hier prüfen.",
+      "tip.needName": "Fügen Sie oben Ihren vollständigen Namen hinzu.",
+      "tip.needRole": "Fügen Sie eine Zielposition hinzu, damit klar ist, worauf Sie sich bewerben.",
+      "tip.needContact": "Fügen Sie eine Kontaktzeile hinzu — E-Mail, Ort und/oder LinkedIn.",
+      "tip.needEmail": "Geben Sie eine E-Mail-Adresse in Ihrer Kontaktzeile an.",
+      "tip.needSummary": "Fügen Sie ein berufliches Profil mit 2-3 Sätzen hinzu.",
+      "tip.expandSummary": "Erweitern Sie Ihr Profil auf mindestens ein paar vollständige Sätze.",
+      "tip.trimSummary": "Kürzen Sie Ihr Profil — streben Sie einen kurzen Absatz an, keine ganze Seite.",
+      "tip.needExperience": "Fügen Sie mindestens einen Eintrag zur Berufserfahrung hinzu.",
+      "tip.missingCompany": "Fügen Sie den Firmennamen für {n} Ihrer Positionen hinzu.",
+      "tip.missingDates": "Fügen Sie Start-/Enddaten für {n} Ihrer Positionen hinzu.",
+      "tip.missingBullets": "Fügen Sie mindestens einen Stichpunkt hinzu, der beschreibt, was Sie in {n} Ihrer Positionen getan haben.",
+      "tip.noVerb": "{n} von {total} Stichpunkten beginnen nicht mit einem starken Aktionsverb (z. B. Leitete, Baute auf, Reduzierte) — formulieren Sie sie so um, dass sie damit beginnen.",
+      "tip.noMetric": "{n} Ihrer Stichpunkte enthalten keine Zahlen — fügen Sie eine Kennzahl (%, $ oder Anzahl) hinzu, um echte Wirkung zu zeigen.",
+      "tip.needEdu": "Fügen Sie Ihre Ausbildung hinzu.",
+      "tip.fewSkills": "Listen Sie noch ein paar Fähigkeiten mehr auf — Sie haben {n}, streben Sie mindestens 6 an.",
+      "tip.missingKeywords": "Arbeiten Sie diese Schlüsselwörter aus der Stellenbeschreibung ein, sofern sie wirklich zutreffen: {list}.",
+      "tip.pasteJobDescription": "Fügen Sie im Abschnitt „Schlüsselwort-Abgleich“ unten eine Stellenbeschreibung ein, um auf fehlende Schlüsselwörter zu prüfen.",
+      "tip.longBullets": "{n} Ihrer Stichpunkte sind sehr lang — teilen Sie sie in kürzere, prägnantere Zeilen auf.",
+      "tip.strayChars": "Entfernen Sie Aufzählungszeichen (•) oder Tabulatoren aus Ihren Stichpunkten — eine Errungenschaft pro Zeile reicht aus.",
+      "jobs.noResults": "Keine passenden Stellen gefunden. Versuchen Sie eine andere Position oder einen anderen Ort.",
+      "jobs.untitledRole": "Unbenannte Position",
+      "jobs.matchPct": "{n}% Übereinstimmung",
+      "jobs.view": "Ansehen",
+      "jobs.enterRole": "Geben Sie eine Position oder Stichwörter zur Suche ein.",
+      "jobs.searching": "Wird gesucht …",
+      "jobs.searchFailed": "Suche fehlgeschlagen ({status})",
+      "jobs.loadError": "Jobs konnten nicht geladen werden ({message}).",
+      "interview.requestFailed": "Anfrage fehlgeschlagen ({status})",
+      "interview.tipLabel": "Tipp",
+      "interview.unreachable": "Der KI-Interviewer war nicht erreichbar ({message}).",
+      "common.close": "Schließen",
+      "common.gotIt": "Verstanden",
+      "auth.signup": "Registrieren",
+      "auth.choosePlan": "Wählen Sie Ihren Plan",
+      "pricing.yearly.tag2": "Jährlich",
+      "auth.save43": "43 % sparen",
+      "auth.email": "E-Mail",
+      "auth.password": "Passwort",
+      "auth.passwordHint": "Mindestens 8 Zeichen, mit einem Buchstaben und einer Zahl.",
+      "auth.confirmPassword": "Passwort bestätigen",
+      "auth.trialNote": "7 Tage kostenlos, danach wird Ihre Karte automatisch belastet, sofern Sie nicht vorher kündigen. Wir informieren Sie per E-Mail, bevor sie belastet wird.",
+      "auth.agreeTerms": "Mit der Fortsetzung stimmen Sie den <a href=\"/terms.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Nutzungsbedingungen</a> und der <a href=\"/privacy.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Datenschutzrichtlinie</a> von LandIt zu.",
+      "auth.checkEmail": "Überprüfen Sie Ihre E-Mails",
+      "auth.checkEmailBody": "Wir haben einen Bestätigungslink an <strong id=\"auth-success-email\"></strong> gesendet. Klicken Sie darauf und melden Sie sich dann hier wieder an — wir bringen Sie direkt zur Karteneingabe, um Ihre kostenlose Testphase zu starten.",
+      "auth.resend": "Nicht erhalten? Erneut senden",
+      "account.title": "Konto",
+      "account.plan": "Plan",
+      "account.manageBilling": "Abrechnung verwalten",
+      "account.choosePlan": "Plan wählen",
+      "account.changePassword": "PASSWORT ÄNDERN",
+      "account.newPassword": "Neues Passwort",
+      "account.passwordUpdated": "Passwort aktualisiert.",
+      "account.updatePassword": "Passwort aktualisieren",
+      "account.dangerZone": "GEFAHRENZONE",
+      "account.dangerNote": "Löscht Ihr Konto und Ihre Lebenslaufdaten dauerhaft und kündigt jedes aktive Abonnement. Dies kann nicht rückgängig gemacht werden.",
+      "account.deleteAccount": "Konto löschen",
+      "auth.notConfigured": "Konten sind auf dieser Bereitstellung noch nicht konfiguriert (Supabase-URL/Schlüssel fehlt).",
+      "auth.continueToPayment": "Weiter zur Zahlung",
+      "auth.err.missingFields": "Bitte geben Sie Ihre E-Mail-Adresse und Ihr Passwort ein.",
+      "auth.err.weakPassword": "Das Passwort muss mindestens 8 Zeichen lang sein und einen Buchstaben und eine Zahl enthalten.",
+      "auth.err.passwordsDontMatch": "Die Passwörter stimmen nicht überein.",
+      "auth.err.generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "auth.sending": "Wird gesendet …",
+      "auth.resendFailed": "Erneutes Senden fehlgeschlagen — versuchen Sie es erneut",
+      "auth.resendSent": "Gesendet! Überprüfen Sie Ihren Posteingang",
+      "account.status.active": "LandIt Pro (aktiv)",
+      "account.status.pastDue": "Überfällig — aktualisieren Sie Ihre Zahlungsmethode",
+      "account.status.canceled": "Gekündigt",
+      "account.status.trialDaysLeft": "Kostenlose Testphase — noch {n} Tag(e) (verlängert sich automatisch)",
+      "account.status.trialEnded": "Testphase beendet",
+      "account.status.trialNotStarted": "Testphase nicht gestartet — fügen Sie eine Karte hinzu, um zu beginnen",
+      "account.loading": "Wird geladen …",
+      "account.billingPortalError": "Abrechnungsportal konnte nicht geöffnet werden: {message}",
+      "account.passwordUpdateError": "Passwort konnte nicht aktualisiert werden.",
+      "account.deleteConfirm1": "LandIt-Konto löschen? Dadurch werden Ihre Lebenslaufdaten dauerhaft entfernt und jedes aktive Abonnement gekündigt. Dies kann nicht rückgängig gemacht werden.",
+      "account.deleteConfirm2": "Sind Sie sicher? Dies ist Ihre letzte Chance, einen Rückzieher zu machen.",
+      "account.deleting": "Wird gelöscht …",
+      "account.deleted": "Ihr Konto wurde gelöscht.",
+      "account.deleteError": "Konto konnte nicht gelöscht werden: {message}",
+      "nav.badge.pro": "Pro",
+      "nav.badge.daysLeft": "noch {n} Tag(e) in der Testphase",
+      "account.status.trialNotStartedShort": "Testphase nicht gestartet",
+      "nav.accountSettings": "Kontoeinstellungen",
+      "nav.logout": "Abmelden",
+      "builder.example.replaceConfirm": "Dies ersetzt Ihre bisherigen Eingaben durch einen Beispiel-Lebenslauf. Fortfahren?",
+      "checkout.redirecting": "Wird weitergeleitet …",
+      "checkout.failed": "Checkout fehlgeschlagen ({status})",
+      "checkout.startError": "Checkout konnte nicht gestartet werden: {message}",
+      "checkout.success": "Sie sind jetzt bei LandIt Pro! Es kann ein paar Sekunden dauern, bis Ihr Konto aktualisiert wird.",
+      "checkout.canceled": "Checkout wurde abgebrochen — es wurde keine Zahlung vorgenommen.",
+      "interview.voiceOff": "🔇 Sprachausgabe aus",
+    },
+    no: {
+      "nav.link.interview": "AI-intervju",
+      "nav.link.builder": "CV-bygger",
+      "nav.link.score": "ATS-score",
+      "nav.link.jobs": "Jobbsøk",
+      "nav.link.pricing": "Priser",
+      "nav.login": "Logg inn",
+      "nav.startTrial": "Start gratis prøveperiode",
+      "hero.eyebrow": "✦ Nå med AI-intervjutrening i sanntid",
+      "hero.title": "Skriv CV-en som<br>faktisk gir deg jobben.",
+      "hero.subtitle": "LandIt skriver, vurderer og tilpasser CV-en din for hver søknad — og lar deg deretter øve i et AI-intervju, slik at du møter opp forberedt, ikke bare håpefull.",
+      "hero.cta.trial": "Start din 7-dagers gratis prøveperiode",
+      "hero.cta.tryInterview": "Prøv et AI-intervju",
+      "hero.trialNote": "Gratis i 7 dager, deretter fortsetter det automatisk — si opp når som helst før prøveperioden slutter, så blir du ikke belastet.",
+      "hero.clickAndSee": "👆 Klikk og se",
+      "hero.tab.build": "Bygg",
+      "hero.tab.score": "Score",
+      "hero.tab.target": "Mål",
+      "hero.tab.practice": "Øv",
+      "score.label.content": "Innhold",
+      "score.label.keywords": "Nøkkelord",
+      "score.label.impact": "Effekt",
+      "logostrip.label": "Jobbsøkere som bruker LandIt har gått videre til intervju hos selskaper som",
+      "interview.badge": "HVA SOM GJØR LANDIT ANNERLEDES",
+      "interview.title": "Øv på intervjuet, ikke bare CV-en.",
+      "interview.subtitle": "De fleste CV-verktøy stopper ved PDF-en. LandIts AI-intervjuer stiller deg ekte spørsmål høyt, lytter til svaret ditt og vurderer det — så du vet hvor du står før et ekte menneske gjør det.",
+      "interview.voiceOn": "🔊 Lyd på",
+      "interview.seedQuestion": "La oss starte med noe fra CV-en din. Fortell om en gang du måtte lansere noe under et stramt tidspress.",
+      "interview.answerPlaceholder": "Skriv svaret ditt, eller bruk mikrofonen …",
+      "interview.speakYourAnswer": "Si svaret ditt",
+      "common.send": "Send",
+      "interview.liveScoring": "Live-vurdering",
+      "interview.label.clarity": "Klarhet",
+      "interview.label.structure": "Struktur",
+      "interview.label.specificity": "Spesifisitet",
+      "interview.label.confidence": "Selvtillit",
+      "interview.tip": "<b>Tips:</b> Svar på spørsmålet til venstre for å få ekte, live tilbakemelding her.",
+      "builder.kicker": "CV-BYGGER",
+      "builder.title": "Skriv til venstre, se det ta form til høyre.",
+      "builder.subtitle": "Denne fungerer faktisk — fyll den ut, last deretter ned en ren, ATS-vennlig PDF. Ingen konto nødvendig for å prøve.",
+      "builder.example.label": "Ny her? Se den fylt ut:",
+      "builder.example.choose": "Velg et yrke …",
+      "builder.example.engineer": "Programvareutvikler",
+      "builder.example.marketing": "Markedssjef",
+      "builder.example.nurse": "Autorisert sykepleier",
+      "builder.example.sales": "Salgsrepresentant",
+      "builder.field.name": "Fullt navn",
+      "builder.field.name.placeholder": "f.eks. Kari Nilsen",
+      "builder.field.role": "Ønsket stilling",
+      "builder.field.role.placeholder": "f.eks. Produktmarkedssjef",
+      "builder.field.contact": "Kontaktinfo",
+      "builder.field.contact.placeholder": "f.eks. kari@email.com · Oslo · linkedin.com/in/kari",
+      "builder.field.photo": "Bilde (valgfritt)",
+      "builder.photo.none": "Ikke noe bilde",
+      "builder.photo.upload": "Last opp bilde",
+      "builder.photo.remove": "Fjern",
+      "builder.photo.note": "Enkelte arbeidsgivere og ATS-systemer foretrekker CV-er uten bilde — det er helt valgfritt.",
+      "builder.field.summary": "Profesjonelt sammendrag",
+      "builder.ai.writeWithAI": "✨ Skriv med AI",
+      "builder.field.summary.placeholder": "Et par setninger om hva du gjør og hva du ser etter videre.",
+      "builder.ai.useThis": "Bruk denne",
+      "builder.ai.discard": "Forkast",
+      "builder.divider.experience": "ERFARING",
+      "builder.addRole": "+ Legg til en stilling til",
+      "builder.divider.education": "UTDANNING",
+      "builder.field.edu": "Skole og grad",
+      "builder.field.edu.placeholder": "f.eks. Bachelor i markedsføring, Universitetet i Oslo, 2019",
+      "builder.divider.skills": "FERDIGHETER",
+      "builder.field.skills": "Ferdigheter (kommaseparert)",
+      "builder.field.skills.placeholder": "f.eks. Markedsintroduksjonsstrategi, SQL, Figma, A/B-testing",
+      "builder.downloadPdf": "Last ned som PDF",
+      "builder.template.label": "Mal",
+      "builder.preview.yourName": "Ditt navn",
+      "builder.preview.summaryPlaceholder": "Sammendraget ditt vises her mens du skriver.",
+      "builder.preview.rolesEmpty": "Stillingene dine vises her.",
+      "score.kicker": "ATS-SCORE",
+      "score.title": "Finn ut nøyaktig hva som holder CV-en din tilbake.",
+      "score.subtitle": "De fleste CV-er blir filtrert av programvare før et menneske ser dem. LandIt vurderer din på samme måte, seksjon for seksjon.",
+      "score.label.formatting": "Formatering",
+      "score.orderNote": "Sortert etter hvor mye hver enkelt teller når en rekrutterer leser CV-en — innhold først, formatering sist. <a href=\"#\" onclick=\"event.preventDefault(); replayMainRing();\" style=\"color:var(--forest); font-weight:600;\">Spill av scoreanimasjon på nytt ↻</a>",
+      "score.quickWins": "Raske grep for å heve scoren din",
+      "target.kicker": "NØKKELORDMÅLRETTING",
+      "target.title": "Lim inn stillingsannonsen. Se hva som mangler.",
+      "target.subtitle": "LandIt sammenligner CV-en din med annonsen og viser nøyaktig hvilke ord som mangler — ingen nøkkelord-stapping nødvendig.",
+      "target.field.jd": "Stillingsbeskrivelse",
+      "target.field.jd.placeholder": "Lim inn en stillingsbeskrivelse for å se treff og manglende nøkkelord …",
+      "jobs.kicker": "JOBBSØK",
+      "jobs.title": "Ledige stillinger, matchet mot CV-en din.",
+      "jobs.subtitle": "Ekte annonser, søkt i sanntid — se hvor godt du passer før du søker.",
+      "jobs.field.query": "Stilling eller nøkkelord",
+      "jobs.field.country": "Land",
+      "jobs.field.city": "By (valgfritt)",
+      "jobs.field.city.placeholder": "f.eks. Oslo",
+      "jobs.search": "Søk etter jobber",
+      "jobs.coverageNote": "Dekker 61 land via to jobbdata-leverandører — ikke alle markeder ennå, men i vekst.",
+      "jobs.emptyState": "Skriv inn en stilling ovenfor (eller fyll ut \"Ønsket stilling\" i CV-byggeren) for å se ledige stillinger.",
+      "templates.kicker": "MALER",
+      "templates.title": "Formater som består både skanning og rask gjennomlesning.",
+      "templates.subtitle": "Hver mal er laget for først å bli lest riktig av ATS-programvare, og deretter lese godt for et menneske.",
+      "templates.clickNote": "Klikk på en mal for å bruke den på CV-en ovenfor og i PDF-nedlastingen.",
+      "pricing.kicker": "PRISER",
+      "pricing.title": "Prøv det gratis. Behold det hvis det fungerer.",
+      "pricing.subtitle": "Syv dager full tilgang, deretter fortsetter det på planen du velger — si opp når som helst før den slutter, så blir du ikke belastet.",
+      "pricing.trial.tag": "Gratis prøveperiode",
+      "pricing.trial.period": "/ 7 dager",
+      "pricing.trial.f1": "✓ Ubegrenset CV-redigering",
+      "pricing.trial.f2": "✓ Full ATS-scoreoversikt",
+      "pricing.trial.f3": "✓ 1 nøkkelordtilpasset CV",
+      "pricing.trial.f4": "✓ 2 intervjuøvingsøkter",
+      "pricing.trial.cardNote": "Kort kreves for å starte — si opp før dag 7 for å unngå belastning.",
+      "pricing.monthly.tag": "Månedlig",
+      "pricing.monthly.period": "/ måned",
+      "pricing.paid.f1": "✓ Alt i den gratis prøveperioden",
+      "pricing.paid.f2": "✓ Ubegrenset med tilpassede CV-er",
+      "pricing.paid.f3": "✓ Ubegrenset intervjuøving",
+      "pricing.paid.f4": "✓ Full jobbsøk og matchscoring",
+      "pricing.paid.f5": "✓ Alle maler, ubegrenset nedlasting",
+      "pricing.monthly.cta": "Fortsett med månedlig",
+      "pricing.yearly.tag": "Beste verdi",
+      "pricing.yearly.period": "/ år",
+      "pricing.yearly.save": "≈ $7,42/mnd — spar 43 % vs. månedlig",
+      "pricing.yearly.cta": "Fortsett med årlig",
+      "ctaBand.title": "Din neste jobb er bare én CV unna.",
+      "ctaBand.subtitle": "Start gratis i syv dager, si opp når som helst før den slutter — ingen kostnad, ingen hassle.",
+      "ctaBand.cta": "Start din gratis prøveperiode",
+      "footer.privacy": "Personvernerklæring",
+      "footer.terms": "Vilkår for bruk",
+      "footer.rights": "© LandIt. Alle rettigheter reservert.",
+      "score.level.strong": "Sterk",
+      "score.level.good": "God",
+      "score.level.needsWork": "Trenger arbeid",
+      "score.level.weak": "Svak",
+      "builder.exp.remove": "Fjern",
+      "builder.exp.jobTitle": "Stillingstittel",
+      "builder.exp.jobTitle.placeholder": "f.eks. Markedsføringsleder",
+      "builder.exp.company": "Selskap",
+      "builder.exp.company.placeholder": "f.eks. Nordlys Digital",
+      "builder.exp.startDate": "Startdato",
+      "builder.exp.endDate": "Sluttdato",
+      "builder.exp.currentlyWorkHere": "Jeg jobber her nå",
+      "builder.exp.whatDidYouDo": "Hva gjorde du? (én linje per prestasjon)",
+      "builder.ai.improveWithAI": "✨ Forbedre med AI",
+      "builder.exp.bullets.placeholder": "Ledet markedsintroduksjonen for en omposisjonering som økte kvalifisert pipeline med 30 %",
+      "upgrade.needAI": "AI-assistert skriving krever en aktiv prøveperiode eller et abonnement.",
+      "upgrade.needPdf": "Å laste ned CV-en som PDF krever en aktiv prøveperiode eller et abonnement.",
+      "upgrade.needJobs": "Jobbsøk krever en aktiv prøveperiode eller et abonnement.",
+      "upgrade.needInterview": "AI-intervjutreningen krever en aktiv prøveperiode eller et abonnement.",
+      "upgrade.startTrialToContinue": "Start din gratis 7-dagers prøveperiode for å fortsette.",
+      "upgrade.addCardToStart": "Legg til et kort for å starte den gratis prøveperioden — du blir ikke belastet før den er over.",
+      "upgrade.trialEndedChoosePlan": "Prøveperioden din er over — velg en plan for å fortsette.",
+      "builder.ai.needRole": "Legg til en ønsket stilling først, slik at AI-en vet hva den skal skrive for.",
+      "builder.ai.needJobTitle": "Legg til en stillingstittel for denne rollen først, slik at AI-en vet hva den skal skrive for.",
+      "builder.ai.writing": "Skriver …",
+      "builder.ai.summaryError": "Kunne ikke generere et sammendrag akkurat nå.",
+      "builder.ai.bulletsError": "Kunne ikke generere punkter akkurat nå.",
+      "target.emptyState": "Lim inn en stillingsbeskrivelse ovenfor for å se treff og manglende nøkkelord.",
+      "score.noQuickWins": "Fint — ingen raske grep igjen. CV-en din dekker alt vi sjekker for her.",
+      "tip.needName": "Legg til fullt navn øverst.",
+      "tip.needRole": "Legg til en ønsket stilling slik at det er tydelig hva du søker på.",
+      "tip.needContact": "Legg til en kontaktlinje — e-post, sted og/eller LinkedIn.",
+      "tip.needEmail": "Inkluder en e-postadresse i kontaktlinjen din.",
+      "tip.needSummary": "Legg til et profesjonelt sammendrag på 2-3 setninger.",
+      "tip.expandSummary": "Utvid sammendraget til minst et par fullstendige setninger.",
+      "tip.trimSummary": "Korte ned sammendraget — sikt mot et kort avsnitt, ikke en hel side.",
+      "tip.needExperience": "Legg til minst én arbeidserfaring.",
+      "tip.missingCompany": "Legg til firmanavn for {n} av stillingene dine.",
+      "tip.missingDates": "Legg til start-/sluttdato for {n} av stillingene dine.",
+      "tip.missingBullets": "Legg til minst ett punkt som beskriver hva du gjorde for {n} av stillingene dine.",
+      "tip.noVerb": "{n} av de {total} punktene dine starter ikke med et sterkt handlingsverb (f.eks. Ledet, Bygde, Reduserte) — skriv dem om til å starte med ett.",
+      "tip.noMetric": "{n} av punktene dine har ingen tall — legg til en metrikk (%, $ eller antall) for å vise reell effekt.",
+      "tip.needEdu": "Legg til utdanningen din.",
+      "tip.fewSkills": "List opp noen flere ferdigheter — du har {n}, sikt mot minst 6.",
+      "tip.missingKeywords": "Bruk disse nøkkelordene fra stillingsbeskrivelsen hvis de virkelig passer: {list}.",
+      "tip.pasteJobDescription": "Lim inn en stillingsbeskrivelse i Nøkkelordmålretting-seksjonen under for å sjekke etter manglende nøkkelord.",
+      "tip.longBullets": "{n} av punktene dine er veldig lange — del dem opp i kortere, mer slagkraftige linjer.",
+      "tip.strayChars": "Fjern punkttegn (•) eller tabulatorer fra punktlinjene dine — én prestasjon per linje er nok.",
+      "jobs.noResults": "Fant ingen matchende jobber. Prøv en annen stilling eller et annet sted.",
+      "jobs.untitledRole": "Stilling uten tittel",
+      "jobs.matchPct": "{n}% match",
+      "jobs.view": "Vis",
+      "jobs.enterRole": "Skriv inn en stilling eller nøkkelord for å søke.",
+      "jobs.searching": "Søker …",
+      "jobs.searchFailed": "Søket mislyktes ({status})",
+      "jobs.loadError": "Kunne ikke laste jobber ({message}).",
+      "interview.requestFailed": "Forespørselen mislyktes ({status})",
+      "interview.tipLabel": "Tips",
+      "interview.unreachable": "Kunne ikke nå AI-intervjueren ({message}).",
+      "common.close": "Lukk",
+      "common.gotIt": "Skjønner",
+      "auth.signup": "Registrer deg",
+      "auth.choosePlan": "Velg planen din",
+      "pricing.yearly.tag2": "Årlig",
+      "auth.save43": "Spar 43 %",
+      "auth.email": "E-post",
+      "auth.password": "Passord",
+      "auth.passwordHint": "Minst 8 tegn, med en bokstav og et tall.",
+      "auth.confirmPassword": "Bekreft passord",
+      "auth.trialNote": "7 dager gratis, deretter belastes kortet ditt automatisk med mindre du sier opp først. Vi sender deg en e-post før du blir belastet.",
+      "auth.agreeTerms": "Ved å fortsette godtar du LandIts <a href=\"/terms.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Vilkår for bruk</a> og <a href=\"/privacy.html\" target=\"_blank\" style=\"color:inherit; text-decoration:underline;\">Personvernerklæring</a>.",
+      "auth.checkEmail": "Sjekk e-posten din",
+      "auth.checkEmailBody": "Vi sendte en bekreftelseslenke til <strong id=\"auth-success-email\"></strong>. Klikk på den, og logg deg inn her igjen — vi tar deg rett til å legge inn kortet ditt for å starte den gratis prøveperioden.",
+      "auth.resend": "Fikk du den ikke? Send på nytt",
+      "account.title": "Konto",
+      "account.plan": "Plan",
+      "account.manageBilling": "Administrer fakturering",
+      "account.choosePlan": "Velg en plan",
+      "account.changePassword": "ENDRE PASSORD",
+      "account.newPassword": "Nytt passord",
+      "account.passwordUpdated": "Passordet er oppdatert.",
+      "account.updatePassword": "Oppdater passord",
+      "account.dangerZone": "FARESONE",
+      "account.dangerNote": "Sletter permanent kontoen din, CV-data, og kansellerer eventuelle aktive abonnementer. Dette kan ikke angres.",
+      "account.deleteAccount": "Slett konto",
+      "auth.notConfigured": "Kontoer er ikke konfigurert på denne utrullingen ennå (mangler Supabase URL/nøkkel).",
+      "auth.continueToPayment": "Fortsett til betaling",
+      "auth.err.missingFields": "Vennligst skriv inn e-post og passord.",
+      "auth.err.weakPassword": "Passordet må være minst 8 tegn og inneholde en bokstav og et tall.",
+      "auth.err.passwordsDontMatch": "Passordene stemmer ikke overens.",
+      "auth.err.generic": "Noe gikk galt. Vennligst prøv igjen.",
+      "auth.sending": "Sender …",
+      "auth.resendFailed": "Kunne ikke sende på nytt — prøv igjen",
+      "auth.resendSent": "Sendt! Sjekk innboksen din",
+      "account.status.active": "LandIt Pro (aktiv)",
+      "account.status.pastDue": "Forfalt — oppdater betalingsmetoden din",
+      "account.status.canceled": "Kansellert",
+      "account.status.trialDaysLeft": "Gratis prøveperiode — {n} dag(er) igjen (fornyes automatisk)",
+      "account.status.trialEnded": "Prøveperioden er over",
+      "account.status.trialNotStarted": "Prøveperioden er ikke startet — legg til et kort for å begynne",
+      "account.loading": "Laster …",
+      "account.billingPortalError": "Kunne ikke åpne faktureringsportalen: {message}",
+      "account.passwordUpdateError": "Kunne ikke oppdatere passordet.",
+      "account.deleteConfirm1": "Slette LandIt-kontoen din? Dette fjerner CV-dataene dine permanent og kansellerer eventuelle aktive abonnementer. Dette kan ikke angres.",
+      "account.deleteConfirm2": "Er du sikker? Dette er din siste sjanse til å avbryte.",
+      "account.deleting": "Sletter …",
+      "account.deleted": "Kontoen din er slettet.",
+      "account.deleteError": "Kunne ikke slette kontoen: {message}",
+      "nav.badge.pro": "Pro",
+      "nav.badge.daysLeft": "{n}d igjen i prøveperioden",
+      "account.status.trialNotStartedShort": "Prøveperioden ikke startet",
+      "nav.accountSettings": "Kontoinnstillinger",
+      "nav.logout": "Logg ut",
+      "builder.example.replaceConfirm": "Dette vil erstatte det du allerede har fylt ut med en eksempel-CV. Fortsette?",
+      "checkout.redirecting": "Omdirigerer …",
+      "checkout.failed": "Utsjekk mislyktes ({status})",
+      "checkout.startError": "Kunne ikke starte utsjekk: {message}",
+      "checkout.success": "Du er nå på LandIt Pro! Det kan ta noen sekunder før kontoen din oppdateres.",
+      "checkout.canceled": "Utsjekk ble kansellert — ingen belastning ble gjort.",
+      "interview.voiceOff": "🔇 Lyd av",
+    },
+  };
+  function detectInitialLang(){
+    try {
+      const saved = localStorage.getItem('landit_lang');
+      if (saved && SUPPORTED_LANGS.includes(saved)) return saved;
+    } catch {}
+    const browserLangs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || 'en'];
+    for (const bl of browserLangs) {
+      const code = (bl || '').slice(0, 2).toLowerCase();
+      if (SUPPORTED_LANGS.includes(code)) return code;
+    }
+    return 'en';
+  }
+
+  let currentLang = detectInitialLang();
+
+  function t(key, vars){
+    const dict = I18N[currentLang] || I18N.en;
+    let text = dict[key] != null ? dict[key] : (I18N.en[key] != null ? I18N.en[key] : key);
+    if (vars) {
+      Object.keys(vars).forEach((k) => {
+        text = text.split('{' + k + '}').join(String(vars[k]));
+      });
+    }
+    return text;
+  }
+
+  function applyI18n(){
+    document.documentElement.lang = currentLang;
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+      el.innerHTML = t(el.getAttribute('data-i18n-html'));
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+      el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      el.title = t(el.getAttribute('data-i18n-title'));
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+      el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')));
+    });
+  }
+
+  function syncLangSwitchEls(){
+    document.querySelectorAll('.lang-select').forEach((el) => { el.value = currentLang; });
+  }
+
+  // Re-renders every already-rendered piece of dynamic UI that embeds
+  // translated text directly (rather than via a data-i18n attribute this
+  // function's own applyI18n() pass already refreshes) - the nav auth
+  // block, the live resume preview, and the ATS score/keyword suggestions.
+  // Each callback is guarded since not every script block has loaded yet
+  // the first time setLanguage() could conceivably run.
+  function retranslateDynamicUI(){
+    if (typeof renderNavAuth === 'function') renderNavAuth();
+    if (typeof renderResume === 'function') renderResume();
+    if (typeof updateAnalysis === 'function') updateAnalysis();
+  }
+
+  function setLanguage(lang){
+    if (!SUPPORTED_LANGS.includes(lang)) lang = 'en';
+    currentLang = lang;
+    try { localStorage.setItem('landit_lang', lang); } catch {}
+    applyI18n();
+    syncLangSwitchEls();
+    retranslateDynamicUI();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    applyI18n();
+    syncLangSwitchEls();
+  });
+</script>
+
 <div class="checkout-banner" id="checkout-banner" hidden></div>
 
 <header>
@@ -520,15 +1617,21 @@
       LandIt
     </div>
     <nav class="navlinks">
-      <a href="#ai-interview">AI Interview</a>
-      <a href="#builder">Resume Builder</a>
-      <a href="#score">ATS Score</a>
-      <a href="#jobs">Job Search</a>
-      <a href="#pricing">Pricing</a>
+      <a href="#ai-interview" data-i18n="nav.link.interview">AI Interview</a>
+      <a href="#builder" data-i18n="nav.link.builder">Resume Builder</a>
+      <a href="#score" data-i18n="nav.link.score">ATS Score</a>
+      <a href="#jobs" data-i18n="nav.link.jobs">Job Search</a>
+      <a href="#pricing" data-i18n="nav.link.pricing">Pricing</a>
     </nav>
     <div class="navcta" id="navcta">
-      <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('login');">Log in</a>
-      <a class="btn btn-primary btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start free trial</a>
+      <select id="lang-switch" class="lang-select" onchange="setLanguage(this.value)" aria-label="Language">
+        <option value="en">EN</option>
+        <option value="tr">TR</option>
+        <option value="de">DE</option>
+        <option value="no">NO</option>
+      </select>
+      <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('login');" data-i18n="nav.login">Log in</a>
+      <a class="btn btn-primary btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('signup');" data-i18n="nav.startTrial">Start free trial</a>
     </div>
   </div>
 </header>
@@ -536,23 +1639,23 @@
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow">✦ Now with live AI mock interviews</span>
-      <h1>Write the resume that<br>actually lands the job.</h1>
-      <p class="hero-sub">LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.</p>
+      <span class="eyebrow" data-i18n="hero.eyebrow">✦ Now with live AI mock interviews</span>
+      <h1 data-i18n-html="hero.title">Write the resume that<br>actually lands the job.</h1>
+      <p class="hero-sub" data-i18n="hero.subtitle">LandIt writes, scores, and tailors your resume for every application — then runs you through an AI interview so you walk in ready, not hoping.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#" id="hero-trial-btn" onclick="event.preventDefault(); handleStartTrialClick();">Start your 7-day free trial</a>
-        <a class="btn btn-ghost" href="#ai-interview">Try an AI interview</a>
+        <a class="btn btn-primary" href="#" id="hero-trial-btn" onclick="event.preventDefault(); handleStartTrialClick();" data-i18n="hero.cta.trial">Start your 7-day free trial</a>
+        <a class="btn btn-ghost" href="#ai-interview" data-i18n="hero.cta.tryInterview">Try an AI interview</a>
       </div>
-      <p class="hero-note" id="hero-trial-note">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
+      <p class="hero-note" id="hero-trial-note" data-i18n="hero.trialNote">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
     </div>
     <div class="preview-card">
-      <span class="preview-cta">👆 Click and see</span>
+      <span class="preview-cta" data-i18n="hero.clickAndSee">👆 Click and see</span>
       <div class="preview-topline">
         <div class="hero-tabbar">
-          <button class="htab active" data-pane="build" onclick="heroTab(this,'build')">Build</button>
-          <button class="htab" data-pane="score" onclick="heroTab(this,'score')">Score</button>
-          <button class="htab" data-pane="target" onclick="heroTab(this,'target')">Target</button>
-          <button class="htab" data-pane="practice" onclick="heroTab(this,'practice')">Practice</button>
+          <button class="htab active" data-pane="build" onclick="heroTab(this,'build')" data-i18n="hero.tab.build">Build</button>
+          <button class="htab" data-pane="score" onclick="heroTab(this,'score')" data-i18n="hero.tab.score">Score</button>
+          <button class="htab" data-pane="target" onclick="heroTab(this,'target')" data-i18n="hero.tab.target">Target</button>
+          <button class="htab" data-pane="practice" onclick="heroTab(this,'practice')" data-i18n="hero.tab.practice">Practice</button>
         </div>
       </div>
 
@@ -591,9 +1694,9 @@
             <div class="ring-num"><span class="n" id="hero-ring-num" style="font-size:30px;">0</span><span class="l" id="hero-ring-label" style="font-size:11px;">—</span></div>
           </div>
           <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
-            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;">Content</span><div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--forest);"></div></div><span class="pct" style="font-size:11.5px;">90%</span></div>
-            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;">Keywords</span><div class="bar-track"><div class="bar-fill" style="width:58%; background:var(--amber);"></div></div><span class="pct" style="font-size:11.5px;">58%</span></div>
-            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;">Impact</span><div class="bar-track"><div class="bar-fill" style="width:74%; background:var(--teal);"></div></div><span class="pct" style="font-size:11.5px;">74%</span></div>
+            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;" data-i18n="score.label.content">Content</span><div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--forest);"></div></div><span class="pct" style="font-size:11.5px;">90%</span></div>
+            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;" data-i18n="score.label.keywords">Keywords</span><div class="bar-track"><div class="bar-fill" style="width:58%; background:var(--amber);"></div></div><span class="pct" style="font-size:11.5px;">58%</span></div>
+            <div class="bd-row" style="grid-template-columns:80px 1fr 32px;"><span class="lbl" style="font-size:12.5px;" data-i18n="score.label.impact">Impact</span><div class="bar-track"><div class="bar-fill" style="width:74%; background:var(--teal);"></div></div><span class="pct" style="font-size:11.5px;">74%</span></div>
           </div>
         </div>
       </div>
@@ -625,7 +1728,7 @@
 
 <div class="logostrip">
   <div class="wrap">
-    <p class="label">Job seekers using LandIt have gone on to interview at companies like</p>
+    <p class="label" data-i18n="logostrip.label">Job seekers using LandIt have gone on to interview at companies like</p>
     <div class="logo-row">
       <span>Meridian</span><span>Northwind</span><span>Halcyon</span><span>Arclight</span><span>Fenwick&nbsp;&amp;&nbsp;Co.</span>
     </div>
@@ -637,36 +1740,36 @@
     <div class="section-head">
       <span class="ai-badge">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="white"/></svg>
-        WHAT MAKES LANDIT DIFFERENT
+        <span data-i18n="interview.badge">WHAT MAKES LANDIT DIFFERENT</span>
       </span>
-      <h2>Practice the interview, not just the resume.</h2>
-      <p>Most resume tools stop at the PDF. LandIt's AI interviewer asks you real questions out loud, listens to your answer, and scores it — so you know where you stand before a human ever does.</p>
+      <h2 data-i18n="interview.title">Practice the interview, not just the resume.</h2>
+      <p data-i18n="interview.subtitle">Most resume tools stop at the PDF. LandIt's AI interviewer asks you real questions out loud, listens to your answer, and scores it — so you know where you stand before a human ever does.</p>
     </div>
     <div class="ai-grid">
       <div class="ai-chat">
         <div style="display:flex; justify-content:flex-end;">
-          <button type="button" class="btn btn-ghost btn-sm" id="voice-toggle-btn" onclick="toggleVoiceOutput()" style="display:none;">🔊 Voice on</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="voice-toggle-btn" onclick="toggleVoiceOutput()" style="display:none;" data-i18n="interview.voiceOn">🔊 Voice on</button>
         </div>
         <div id="ai-chat-log">
           <div class="msg ai">
             <div class="avatar">AI</div>
-            <div class="bubble">Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline.</div>
+            <div class="bubble" data-i18n="interview.seedQuestion">Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline.</div>
           </div>
         </div>
         <div style="display:flex; gap:10px; align-items:flex-end;">
-          <textarea id="ai-answer" placeholder="Type your answer, or use the mic…" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
-          <button type="button" class="btn btn-ghost btn-sm" id="mic-btn" onclick="toggleMic()" style="display:none;" title="Speak your answer" aria-label="Speak your answer">🎤</button>
-          <button type="button" class="btn btn-primary btn-sm" id="ai-send-btn" onclick="sendInterviewAnswer()">Send</button>
+          <textarea id="ai-answer" placeholder="Type your answer, or use the mic…" data-i18n-placeholder="interview.answerPlaceholder" style="flex:1; min-height:44px; max-height:140px; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); background:var(--paper); resize:vertical;"></textarea>
+          <button type="button" class="btn btn-ghost btn-sm" id="mic-btn" onclick="toggleMic()" style="display:none;" title="Speak your answer" aria-label="Speak your answer" data-i18n-title="interview.speakYourAnswer" data-i18n-aria="interview.speakYourAnswer">🎤</button>
+          <button type="button" class="btn btn-primary btn-sm" id="ai-send-btn" onclick="sendInterviewAnswer()" data-i18n="common.send">Send</button>
         </div>
         <p id="ai-error" style="display:none; font-size:12.5px; color:var(--clay); margin-top:-8px;"></p>
       </div>
       <div class="ai-feedback">
-        <h3>Live scoring</h3>
-        <div class="fb-row"><span class="lbl">Clarity</span><div class="bar-track"><div class="bar-fill" id="fb-clarity-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="fb-clarity-pct">—</span></div>
-        <div class="fb-row"><span class="lbl">Structure</span><div class="bar-track"><div class="bar-fill" id="fb-structure-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="fb-structure-pct">—</span></div>
-        <div class="fb-row"><span class="lbl">Specificity</span><div class="bar-track"><div class="bar-fill" id="fb-specificity-bar" style="width:0%; background:var(--clay);"></div></div><span class="pct" id="fb-specificity-pct">—</span></div>
-        <div class="fb-row"><span class="lbl">Confidence</span><div class="bar-track"><div class="bar-fill" id="fb-confidence-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="fb-confidence-pct">—</span></div>
-        <div class="fb-note" id="fb-tip"><b>Tip:</b> Answer the question on the left to get real, live feedback here.</div>
+        <h3 data-i18n="interview.liveScoring">Live scoring</h3>
+        <div class="fb-row"><span class="lbl" data-i18n="interview.label.clarity">Clarity</span><div class="bar-track"><div class="bar-fill" id="fb-clarity-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="fb-clarity-pct">—</span></div>
+        <div class="fb-row"><span class="lbl" data-i18n="interview.label.structure">Structure</span><div class="bar-track"><div class="bar-fill" id="fb-structure-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="fb-structure-pct">—</span></div>
+        <div class="fb-row"><span class="lbl" data-i18n="interview.label.specificity">Specificity</span><div class="bar-track"><div class="bar-fill" id="fb-specificity-bar" style="width:0%; background:var(--clay);"></div></div><span class="pct" id="fb-specificity-pct">—</span></div>
+        <div class="fb-row"><span class="lbl" data-i18n="interview.label.confidence">Confidence</span><div class="bar-track"><div class="bar-fill" id="fb-confidence-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="fb-confidence-pct">—</span></div>
+        <div class="fb-note" id="fb-tip" data-i18n-html="interview.tip"><b>Tip:</b> Answer the question on the left to get real, live feedback here.</div>
       </div>
     </div>
   </div>
@@ -675,89 +1778,89 @@
 <section id="builder" style="background:var(--paper-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker" style="color:var(--plum);">RESUME BUILDER</span>
-      <h2>Type on the left, watch it land on the right.</h2>
-      <p>This one actually works — fill it in, then download a clean, ATS-friendly PDF. No account needed to try it.</p>
+      <span class="kicker" style="color:var(--plum);" data-i18n="builder.kicker">RESUME BUILDER</span>
+      <h2 data-i18n="builder.title">Type on the left, watch it land on the right.</h2>
+      <p data-i18n="builder.subtitle">This one actually works — fill it in, then download a clean, ATS-friendly PDF. No account needed to try it.</p>
     </div>
     <div id="example-fill-row" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
-      <span style="font-size:13px; color:var(--ink-soft); font-weight:600;">New here? See it filled in:</span>
+      <span style="font-size:13px; color:var(--ink-soft); font-weight:600;" data-i18n="builder.example.label">New here? See it filled in:</span>
       <select id="example-select" class="example-select" onchange="fillExampleResume(this.value); this.value='';">
-        <option value="" selected disabled>Choose a profession…</option>
-        <option value="engineer">Software Engineer</option>
-        <option value="marketing">Marketing Manager</option>
-        <option value="nurse">Registered Nurse</option>
-        <option value="sales">Sales Representative</option>
+        <option value="" selected disabled data-i18n="builder.example.choose">Choose a profession…</option>
+        <option value="engineer" data-i18n="builder.example.engineer">Software Engineer</option>
+        <option value="marketing" data-i18n="builder.example.marketing">Marketing Manager</option>
+        <option value="nurse" data-i18n="builder.example.nurse">Registered Nurse</option>
+        <option value="sales" data-i18n="builder.example.sales">Sales Representative</option>
       </select>
     </div>
     <div class="builder-grid">
       <div class="card" id="builder-form">
         <div class="field">
-          <label for="in-name">Full name</label>
-          <input id="in-name" type="text" placeholder="e.g. Alicia Moreno">
+          <label for="in-name" data-i18n="builder.field.name">Full name</label>
+          <input id="in-name" type="text" placeholder="e.g. Alicia Moreno" data-i18n-placeholder="builder.field.name.placeholder">
         </div>
         <div class="field">
-          <label for="in-role">Target role</label>
-          <input id="in-role" type="text" placeholder="e.g. Product Marketing Manager">
+          <label for="in-role" data-i18n="builder.field.role">Target role</label>
+          <input id="in-role" type="text" placeholder="e.g. Product Marketing Manager" data-i18n-placeholder="builder.field.role.placeholder">
         </div>
         <div class="field">
-          <label for="in-contact">Contact line</label>
-          <input id="in-contact" type="text" placeholder="e.g. alicia@email.com · Seattle, WA · linkedin.com/in/alicia">
+          <label for="in-contact" data-i18n="builder.field.contact">Contact line</label>
+          <input id="in-contact" type="text" placeholder="e.g. alicia@email.com · Seattle, WA · linkedin.com/in/alicia" data-i18n-placeholder="builder.field.contact.placeholder">
         </div>
         <div class="field">
-          <label for="in-photo-file">Photo (optional)</label>
+          <label for="in-photo-file" data-i18n="builder.field.photo">Photo (optional)</label>
           <div class="photo-upload-row">
             <div class="photo-preview-wrap" id="photo-preview-wrap">
               <img id="photo-preview" alt="" hidden>
-              <span id="photo-preview-placeholder">No photo</span>
+              <span id="photo-preview-placeholder" data-i18n="builder.photo.none">No photo</span>
             </div>
             <div class="photo-upload-actions">
               <input type="file" id="in-photo-file" accept="image/*" onchange="handlePhotoUpload(this)" hidden>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('in-photo-file').click()">Upload photo</button>
-              <button type="button" class="btn btn-ghost btn-sm" id="photo-remove-btn" onclick="removePhoto()" hidden>Remove</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('in-photo-file').click()" data-i18n="builder.photo.upload">Upload photo</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="photo-remove-btn" onclick="removePhoto()" hidden data-i18n="builder.photo.remove">Remove</button>
             </div>
           </div>
           <p id="photo-error" style="display:none; font-size:12.5px; color:var(--clay); margin-top:8px;"></p>
-          <p style="font-size:12px; color:var(--ink-soft); margin-top:8px;">Some employers and ATS systems prefer resumes without a photo — it's entirely optional.</p>
+          <p style="font-size:12px; color:var(--ink-soft); margin-top:8px;" data-i18n="builder.photo.note">Some employers and ATS systems prefer resumes without a photo — it's entirely optional.</p>
           <input type="hidden" id="in-photo">
         </div>
         <div class="field">
           <div class="field-label-row">
-            <label for="in-summary">Professional summary</label>
-            <button type="button" class="btn btn-ai btn-sm" id="summary-ai-btn" onclick="improveSummaryWithAI(this)">✨ Write with AI</button>
+            <label for="in-summary" data-i18n="builder.field.summary">Professional summary</label>
+            <button type="button" class="btn btn-ai btn-sm" id="summary-ai-btn" onclick="improveSummaryWithAI(this)" data-i18n="builder.ai.writeWithAI">✨ Write with AI</button>
           </div>
-          <textarea id="in-summary" placeholder="A couple of sentences on what you do and what you're looking for next."></textarea>
+          <textarea id="in-summary" placeholder="A couple of sentences on what you do and what you're looking for next." data-i18n-placeholder="builder.field.summary.placeholder"></textarea>
           <div class="ai-suggest-wrap" id="summary-ai-suggest" hidden>
             <div class="ai-suggest-box" id="summary-ai-text"></div>
             <div class="ai-suggest-actions">
-              <button type="button" class="btn btn-primary btn-sm" onclick="useAISuggestion('summary')">Use this</button>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="discardAISuggestion('summary')">Discard</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="useAISuggestion('summary')" data-i18n="builder.ai.useThis">Use this</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="discardAISuggestion('summary')" data-i18n="builder.ai.discard">Discard</button>
             </div>
           </div>
           <p class="ai-suggest-error" id="summary-ai-error" style="display:none;"></p>
         </div>
 
-        <div class="field-divider">EXPERIENCE</div>
+        <div class="field-divider" data-i18n="builder.divider.experience">EXPERIENCE</div>
         <div id="exp-list"></div>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="addExperience()">+ Add another role</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addExperience()" data-i18n="builder.addRole">+ Add another role</button>
 
-        <div class="field-divider">EDUCATION</div>
+        <div class="field-divider" data-i18n="builder.divider.education">EDUCATION</div>
         <div class="field">
-          <label for="in-edu">School &amp; degree</label>
-          <input id="in-edu" type="text" placeholder="e.g. B.S. Marketing, University of Washington, 2019">
+          <label for="in-edu" data-i18n="builder.field.edu">School &amp; degree</label>
+          <input id="in-edu" type="text" placeholder="e.g. B.S. Marketing, University of Washington, 2019" data-i18n-placeholder="builder.field.edu.placeholder">
         </div>
 
-        <div class="field-divider">SKILLS</div>
+        <div class="field-divider" data-i18n="builder.divider.skills">SKILLS</div>
         <div class="field">
-          <label for="in-skills">Skills (comma separated)</label>
-          <input id="in-skills" type="text" placeholder="e.g. Go-to-market strategy, SQL, Figma, A/B testing">
+          <label for="in-skills" data-i18n="builder.field.skills">Skills (comma separated)</label>
+          <input id="in-skills" type="text" placeholder="e.g. Go-to-market strategy, SQL, Figma, A/B testing" data-i18n-placeholder="builder.field.skills.placeholder">
         </div>
 
-        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); downloadResumePDF();" style="width:100%; margin-top:22px;">Download as PDF</a>
+        <a class="btn btn-primary" href="#" onclick="event.preventDefault(); downloadResumePDF();" style="width:100%; margin-top:22px;" data-i18n="builder.downloadPdf">Download as PDF</a>
       </div>
 
       <div class="builder-preview-col">
         <div class="tmpl-picker-compact" id="tmpl-picker-compact">
-          <span class="tmpl-picker-label">Template</span>
+          <span class="tmpl-picker-label" data-i18n="builder.template.label">Template</span>
           <div class="tmpl-row-compact">
             <button type="button" class="tmpl-card tmpl-pill selected" data-template="clearline" onclick="selectTemplate('clearline')" title="Clearline"><span class="tmpl-dot" style="background:var(--forest);"></span>Clearline<span class="tmpl-check">✓</span></button>
             <button type="button" class="tmpl-card tmpl-pill" data-template="fieldwork" onclick="selectTemplate('fieldwork')" title="Fieldwork"><span class="tmpl-dot" style="background:var(--teal);"></span>Fieldwork<span class="tmpl-check">✓</span></button>
@@ -768,23 +1871,23 @@
         <div class="card live-resume" id="resume-preview" data-template="clearline">
           <div class="lheader">
             <div class="lheader-text">
-              <div class="lname" id="out-name">Your name</div>
-              <div class="lrole" id="out-role">Target role</div>
+              <div class="lname" id="out-name" data-i18n="builder.preview.yourName">Your name</div>
+              <div class="lrole" id="out-role" data-i18n="builder.field.role">Target role</div>
               <div class="lcontact" id="out-contact"></div>
-              <div class="lsummary" id="out-summary">Your summary will appear here as you type.</div>
+              <div class="lsummary" id="out-summary" data-i18n="builder.preview.summaryPlaceholder">Your summary will appear here as you type.</div>
             </div>
             <img id="out-photo" class="lphoto" alt="" style="display:none;">
           </div>
           <hr>
-          <div class="lsection">EXPERIENCE</div>
+          <div class="lsection" data-i18n="builder.divider.experience">EXPERIENCE</div>
           <div id="out-exp-list">
-            <div class="lexp-empty">Your roles will appear here.</div>
+            <div class="lexp-empty" data-i18n="builder.preview.rolesEmpty">Your roles will appear here.</div>
           </div>
           <hr id="edu-hr" style="display:none;">
-          <div class="lsection" id="edu-heading" style="display:none;">EDUCATION</div>
+          <div class="lsection" id="edu-heading" style="display:none;" data-i18n="builder.divider.education">EDUCATION</div>
           <div class="lexp-sub" id="out-edu"></div>
           <hr id="skills-hr" style="display:none;">
-          <div class="lsection" id="skills-heading" style="display:none;">SKILLS</div>
+          <div class="lsection" id="skills-heading" style="display:none;" data-i18n="builder.divider.skills">SKILLS</div>
           <div id="out-skills" class="skill-tags"></div>
         </div>
       </div>
@@ -795,9 +1898,9 @@
 <section id="score" style="background:var(--paper-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker" style="color:var(--forest);">ATS SCORE</span>
-      <h2>Know exactly what's holding your resume back.</h2>
-      <p>Most resumes are filtered by software before a person ever sees them. LandIt scores yours the same way, section by section.</p>
+      <span class="kicker" style="color:var(--forest);" data-i18n="score.kicker">ATS SCORE</span>
+      <h2 data-i18n="score.title">Know exactly what's holding your resume back.</h2>
+      <p data-i18n="score.subtitle">Most resumes are filtered by software before a person ever sees them. LandIt scores yours the same way, section by section.</p>
     </div>
     <div class="card score-grid">
       <div class="ring-wrap">
@@ -813,14 +1916,14 @@
         </div>
       </div>
       <div class="breakdown">
-        <div class="bd-row"><span class="lbl">Content</span><div class="bar-track"><div class="bar-fill" id="score-content-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="score-content-pct">0%</span></div>
-        <div class="bd-row"><span class="lbl">Impact</span><div class="bar-track"><div class="bar-fill" id="score-impact-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="score-impact-pct">0%</span></div>
-        <div class="bd-row"><span class="lbl">Keywords</span><div class="bar-track"><div class="bar-fill" id="score-keywords-bar" style="width:0%; background:var(--amber);"></div></div><span class="pct" id="score-keywords-pct">0%</span></div>
-        <div class="bd-row"><span class="lbl">Formatting</span><div class="bar-track"><div class="bar-fill" id="score-formatting-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="score-formatting-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl" data-i18n="score.label.content">Content</span><div class="bar-track"><div class="bar-fill" id="score-content-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="score-content-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl" data-i18n="score.label.impact">Impact</span><div class="bar-track"><div class="bar-fill" id="score-impact-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="score-impact-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl" data-i18n="score.label.keywords">Keywords</span><div class="bar-track"><div class="bar-fill" id="score-keywords-bar" style="width:0%; background:var(--amber);"></div></div><span class="pct" id="score-keywords-pct">0%</span></div>
+        <div class="bd-row"><span class="lbl" data-i18n="score.label.formatting">Formatting</span><div class="bar-track"><div class="bar-fill" id="score-formatting-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="score-formatting-pct">0%</span></div>
       </div>
-      <p style="grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); margin-top:-6px;">Ordered by how much each one weighs in a hiring manager's read — content first, formatting last. <a href="#" onclick="event.preventDefault(); replayMainRing();" style="color:var(--forest); font-weight:600;">Replay score animation ↻</a></p>
+      <p style="grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); margin-top:-6px;" data-i18n-html="score.orderNote">Ordered by how much each one weighs in a hiring manager's read — content first, formatting last. <a href="#" onclick="event.preventDefault(); replayMainRing();" style="color:var(--forest); font-weight:600;">Replay score animation ↻</a></p>
       <div style="grid-column:1/-1; margin-top:6px; padding-top:20px; border-top:1px solid var(--line);">
-        <div style="font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:12px;">Quick wins to raise your score</div>
+        <div style="font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:12px;" data-i18n="score.quickWins">Quick wins to raise your score</div>
         <div id="score-suggestions" class="suggestions-list"></div>
       </div>
     </div>
@@ -830,14 +1933,14 @@
 <section id="target">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker" style="color:var(--clay);">KEYWORD TARGETING</span>
-      <h2>Paste the job post. See what's missing.</h2>
-      <p>LandIt compares your resume against the listing and shows exactly which terms to add — no keyword stuffing required.</p>
+      <span class="kicker" style="color:var(--clay);" data-i18n="target.kicker">KEYWORD TARGETING</span>
+      <h2 data-i18n="target.title">Paste the job post. See what's missing.</h2>
+      <p data-i18n="target.subtitle">LandIt compares your resume against the listing and shows exactly which terms to add — no keyword stuffing required.</p>
     </div>
     <div class="card">
       <div class="field">
-        <label for="jd">Job description</label>
-        <textarea id="jd" style="min-height:100px" placeholder="Paste a job description to see matched and missing keywords…">We're looking for a Product Marketing Manager with experience in go-to-market strategy, positioning, sprint planning, and cross-functional collaboration with sales and design teams.</textarea>
+        <label for="jd" data-i18n="target.field.jd">Job description</label>
+        <textarea id="jd" style="min-height:100px" placeholder="Paste a job description to see matched and missing keywords…" data-i18n-placeholder="target.field.jd.placeholder">We're looking for a Product Marketing Manager with experience in go-to-market strategy, positioning, sprint planning, and cross-functional collaboration with sales and design teams.</textarea>
       </div>
       <div class="kw-chips" id="kw-chips"></div>
     </div>
@@ -847,19 +1950,19 @@
 <section id="jobs">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker" style="color:var(--amber);">JOB SEARCH</span>
-      <h2>Open roles, matched to your resume.</h2>
-      <p>Real listings, searched live — see how closely you fit before you apply.</p>
+      <span class="kicker" style="color:var(--amber);" data-i18n="jobs.kicker">JOB SEARCH</span>
+      <h2 data-i18n="jobs.title">Open roles, matched to your resume.</h2>
+      <p data-i18n="jobs.subtitle">Real listings, searched live — see how closely you fit before you apply.</p>
     </div>
     <div class="card" style="margin-bottom:24px;">
       <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
         <div class="field suggest-wrap" style="flex:1; min-width:200px; margin-bottom:0;">
-          <label for="job-query">Role or keywords</label>
-          <input id="job-query" type="text" placeholder="e.g. Product Marketing Manager" autocomplete="off">
+          <label for="job-query" data-i18n="jobs.field.query">Role or keywords</label>
+          <input id="job-query" type="text" placeholder="e.g. Product Marketing Manager" data-i18n-placeholder="builder.field.role.placeholder" autocomplete="off">
           <div id="job-query-suggestions" class="suggest-list" hidden></div>
         </div>
         <div class="field" style="min-width:170px; margin-bottom:0;">
-          <label for="job-country">Country</label>
+          <label for="job-country" data-i18n="jobs.field.country">Country</label>
           <select id="job-country">
             <option value="ar">Argentina</option>
             <option value="au">Australia</option>
@@ -925,15 +2028,15 @@
           </select>
         </div>
         <div class="field" style="flex:1; min-width:160px; margin-bottom:0;">
-          <label for="job-location">City (optional)</label>
-          <input id="job-location" type="text" placeholder="e.g. Seattle">
+          <label for="job-location" data-i18n="jobs.field.city">City (optional)</label>
+          <input id="job-location" type="text" placeholder="e.g. Seattle" data-i18n-placeholder="jobs.field.city.placeholder">
         </div>
-        <button type="button" class="btn btn-primary" onclick="searchJobs()" style="height:44px;">Search jobs</button>
+        <button type="button" class="btn btn-primary" onclick="searchJobs()" style="height:44px;" data-i18n="jobs.search">Search jobs</button>
       </div>
-      <p style="font-size:12px; color:var(--ink-soft); margin-top:12px; margin-bottom:0;">Covers 61 countries across two job-data providers — still not every market, but growing.</p>
+      <p style="font-size:12px; color:var(--ink-soft); margin-top:12px; margin-bottom:0;" data-i18n="jobs.coverageNote">Covers 61 countries across two job-data providers — still not every market, but growing.</p>
     </div>
     <div class="job-list" id="job-list">
-      <p class="lexp-empty">Enter a role above (or fill in "Target role" in the Resume Builder) to see open listings.</p>
+      <p class="lexp-empty" data-i18n="jobs.emptyState">Enter a role above (or fill in "Target role" in the Resume Builder) to see open listings.</p>
     </div>
   </div>
 </section>
@@ -941,9 +2044,9 @@
 <section style="background:var(--paper-raised); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
   <div class="wrap">
     <div class="section-head">
-      <span class="kicker" style="color:var(--ink-soft);">TEMPLATES</span>
-      <h2>Formats that pass the scan and the skim.</h2>
-      <p>Every template is built to parse cleanly through ATS software first, and read well to a human second.</p>
+      <span class="kicker" style="color:var(--ink-soft);" data-i18n="templates.kicker">TEMPLATES</span>
+      <h2 data-i18n="templates.title">Formats that pass the scan and the skim.</h2>
+      <p data-i18n="templates.subtitle">Every template is built to parse cleanly through ATS software first, and read well to a human second.</p>
     </div>
     <div class="tmpl-row" id="tmpl-row">
       <div class="tmpl-card selected" data-template="clearline" onclick="selectTemplate('clearline')">
@@ -963,64 +2066,64 @@
         <div class="tmpl-name">Runway <span class="tmpl-check">✓</span></div>
       </div>
     </div>
-    <p style="text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:16px;">Click a template to apply it to your resume above and in the PDF download.</p>
+    <p style="text-align:center; font-size:12.5px; color:var(--ink-soft); margin-top:16px;" data-i18n="templates.clickNote">Click a template to apply it to your resume above and in the PDF download.</p>
   </div>
 </section>
 
 <section id="pricing">
   <div class="wrap">
     <div class="section-head" style="margin-left:auto; margin-right:auto; text-align:center;">
-      <span class="kicker" style="color:var(--teal);">PRICING</span>
-      <h2>Try it free. Keep it if it works.</h2>
-      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, then it continues on the plan you pick — cancel anytime before it ends and you won't be charged.</p>
+      <span class="kicker" style="color:var(--teal);" data-i18n="pricing.kicker">PRICING</span>
+      <h2 data-i18n="pricing.title">Try it free. Keep it if it works.</h2>
+      <p style="margin-left:auto;margin-right:auto;" data-i18n="pricing.subtitle">Seven days, full access, then it continues on the plan you pick — cancel anytime before it ends and you won't be charged.</p>
     </div>
     <div class="price-grid">
       <div class="price-card">
-        <div class="price-tag">Free trial</div>
-        <div class="price-num">$0 <span>/ 7 days</span></div>
+        <div class="price-tag" data-i18n="pricing.trial.tag">Free trial</div>
+        <div class="price-num">$0 <span data-i18n="pricing.trial.period">/ 7 days</span></div>
         <ul class="price-list">
-          <li>✓ Unlimited resume edits</li>
-          <li>✓ Full ATS score breakdown</li>
-          <li>✓ 1 keyword-targeted resume</li>
-          <li>✓ 2 interview practice sessions</li>
+          <li data-i18n="pricing.trial.f1">✓ Unlimited resume edits</li>
+          <li data-i18n="pricing.trial.f2">✓ Full ATS score breakdown</li>
+          <li data-i18n="pricing.trial.f3">✓ 1 keyword-targeted resume</li>
+          <li data-i18n="pricing.trial.f4">✓ 2 interview practice sessions</li>
         </ul>
-        <p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 14px;">Card required to start — cancel before day 7 to avoid being charged.</p>
-        <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); handleStartTrialClick();" style="width:100%;">Start free trial</a>
+        <p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 14px;" data-i18n="pricing.trial.cardNote">Card required to start — cancel before day 7 to avoid being charged.</p>
+        <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); handleStartTrialClick();" style="width:100%;" data-i18n="nav.startTrial">Start free trial</a>
       </div>
       <div class="price-card">
-        <div class="price-tag">Monthly</div>
-        <div class="price-num">$13 <span>/ month</span></div>
+        <div class="price-tag" data-i18n="pricing.monthly.tag">Monthly</div>
+        <div class="price-num">$13 <span data-i18n="pricing.monthly.period">/ month</span></div>
         <ul class="price-list">
-          <li>✓ Everything in the free trial</li>
-          <li>✓ Unlimited tailored resumes</li>
-          <li>✓ Unlimited interview practice</li>
-          <li>✓ Full job search &amp; match scoring</li>
-          <li>✓ All templates, unlimited downloads</li>
+          <li data-i18n="pricing.paid.f1">✓ Everything in the free trial</li>
+          <li data-i18n="pricing.paid.f2">✓ Unlimited tailored resumes</li>
+          <li data-i18n="pricing.paid.f3">✓ Unlimited interview practice</li>
+          <li data-i18n="pricing.paid.f4">✓ Full job search &amp; match scoring</li>
+          <li data-i18n="pricing.paid.f5">✓ All templates, unlimited downloads</li>
         </ul>
-        <a class="btn btn-ghost checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('monthly', this);" style="width:100%;">Continue with Monthly</a>
+        <a class="btn btn-ghost checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('monthly', this);" style="width:100%;" data-i18n="pricing.monthly.cta">Continue with Monthly</a>
       </div>
       <div class="price-card highlight">
-        <div class="price-tag">Best value</div>
-        <div class="price-num">$89 <span>/ year</span></div>
-        <div class="price-save">≈ $7.42/mo — save 43% vs. monthly</div>
+        <div class="price-tag" data-i18n="pricing.yearly.tag">Best value</div>
+        <div class="price-num">$89 <span data-i18n="pricing.yearly.period">/ year</span></div>
+        <div class="price-save" data-i18n="pricing.yearly.save">≈ $7.42/mo — save 43% vs. monthly</div>
         <ul class="price-list">
-          <li>✓ Everything in the free trial</li>
-          <li>✓ Unlimited tailored resumes</li>
-          <li>✓ Unlimited interview practice</li>
-          <li>✓ Full job search &amp; match scoring</li>
-          <li>✓ All templates, unlimited downloads</li>
+          <li data-i18n="pricing.paid.f1">✓ Everything in the free trial</li>
+          <li data-i18n="pricing.paid.f2">✓ Unlimited tailored resumes</li>
+          <li data-i18n="pricing.paid.f3">✓ Unlimited interview practice</li>
+          <li data-i18n="pricing.paid.f4">✓ Full job search &amp; match scoring</li>
+          <li data-i18n="pricing.paid.f5">✓ All templates, unlimited downloads</li>
         </ul>
-        <a class="btn btn-primary checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('yearly', this);" style="width:100%;">Continue with Yearly</a>
+        <a class="btn btn-primary checkout-btn" href="#" onclick="event.preventDefault(); startCheckout('yearly', this);" style="width:100%;" data-i18n="pricing.yearly.cta">Continue with Yearly</a>
       </div>
     </div>
   </div>
 </section>
 
 <div class="cta-band" id="cta-band">
-  <h2>Your next job is one resume away.</h2>
-  <p>Start free for seven days, cancel anytime before it ends — no charge, no hassle.</p>
+  <h2 data-i18n="ctaBand.title">Your next job is one resume away.</h2>
+  <p data-i18n="ctaBand.subtitle">Start free for seven days, cancel anytime before it ends — no charge, no hassle.</p>
   <div class="hero-actions">
-    <a class="btn btn-primary" href="#" onclick="event.preventDefault(); handleStartTrialClick();" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
+    <a class="btn btn-primary" href="#" onclick="event.preventDefault(); handleStartTrialClick();" style="background:var(--amber); color:var(--ink);" data-i18n="ctaBand.cta">Start your free trial</a>
   </div>
 </div>
 
@@ -1029,14 +2132,14 @@
     <div class="foot-row">
       <div class="logo" style="font-size:17px;">LandIt</div>
       <div style="display:flex; gap:24px; flex-wrap:wrap;">
-        <a href="#ai-interview">AI Interview</a>
-        <a href="#builder">Resume Builder</a>
-        <a href="#jobs">Job Search</a>
-        <a href="#pricing">Pricing</a>
-        <a href="/privacy.html">Privacy Policy</a>
-        <a href="/terms.html">Terms of Service</a>
+        <a href="#ai-interview" data-i18n="nav.link.interview">AI Interview</a>
+        <a href="#builder" data-i18n="nav.link.builder">Resume Builder</a>
+        <a href="#jobs" data-i18n="nav.link.jobs">Job Search</a>
+        <a href="#pricing" data-i18n="nav.link.pricing">Pricing</a>
+        <a href="/privacy.html" data-i18n="footer.privacy">Privacy Policy</a>
+        <a href="/terms.html" data-i18n="footer.terms">Terms of Service</a>
       </div>
-      <div>© LandIt. All rights reserved.</div>
+      <div data-i18n="footer.rights">© LandIt. All rights reserved.</div>
     </div>
   </div>
 </footer>
@@ -1050,10 +2153,10 @@
     return `hsl(${hue}, 72%, 42%)`;
   }
   function scoreLabel(score){
-    if (score >= 80) return 'Strong';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Needs work';
-    return 'Weak';
+    if (score >= 80) return t('score.level.strong');
+    if (score >= 60) return t('score.level.good');
+    if (score >= 40) return t('score.level.needsWork');
+    return t('score.level.weak');
   }
 
   // Tracks the latest animation call per ring element so a new call
@@ -1241,18 +2344,18 @@
     wrap.className = 'exp-entry';
     wrap.dataset.id = id;
     wrap.innerHTML = `
-      <button type="button" class="remove-exp" onclick="removeExperience(${id})">Remove</button>
+      <button type="button" class="remove-exp" onclick="removeExperience(${id})" data-i18n="builder.exp.remove">${t('builder.exp.remove')}</button>
       <div class="field">
-        <label>Job title</label>
-        <input type="text" class="exp-title" placeholder="e.g. Marketing Lead" oninput="renderResume()">
+        <label data-i18n="builder.exp.jobTitle">${t('builder.exp.jobTitle')}</label>
+        <input type="text" class="exp-title" placeholder="${t('builder.exp.jobTitle.placeholder')}" data-i18n-placeholder="builder.exp.jobTitle.placeholder" oninput="renderResume()">
       </div>
       <div class="field">
-        <label>Company</label>
-        <input type="text" class="exp-company" placeholder="e.g. Northwind Digital" oninput="renderResume()">
+        <label data-i18n="builder.exp.company">${t('builder.exp.company')}</label>
+        <input type="text" class="exp-company" placeholder="${t('builder.exp.company.placeholder')}" data-i18n-placeholder="builder.exp.company.placeholder" oninput="renderResume()">
       </div>
       <div class="exp-row">
         <div class="field">
-          <label>Start date</label>
+          <label data-i18n="builder.exp.startDate">${t('builder.exp.startDate')}</label>
           <div class="date-select-row">
             <select class="exp-start-month" onchange="updateExpDateField(this.closest('.exp-entry'), 'start')"></select>
             <select class="exp-start-year" onchange="updateExpDateField(this.closest('.exp-entry'), 'start')"></select>
@@ -1260,26 +2363,26 @@
           <input type="hidden" class="exp-start">
         </div>
         <div class="field">
-          <label>End date</label>
+          <label data-i18n="builder.exp.endDate">${t('builder.exp.endDate')}</label>
           <div class="date-select-row">
             <select class="exp-end-month" onchange="updateExpDateField(this.closest('.exp-entry'), 'end')"></select>
             <select class="exp-end-year" onchange="updateExpDateField(this.closest('.exp-entry'), 'end')"></select>
           </div>
-          <label class="exp-current-label"><input type="checkbox" class="exp-current" onchange="toggleExpCurrent(this)"> I currently work here</label>
+          <label class="exp-current-label"><input type="checkbox" class="exp-current" onchange="toggleExpCurrent(this)"> <span data-i18n="builder.exp.currentlyWorkHere">${t('builder.exp.currentlyWorkHere')}</span></label>
           <input type="hidden" class="exp-end">
         </div>
       </div>
       <div class="field">
         <div class="field-label-row">
-          <label>What did you do? (one line per achievement)</label>
-          <button type="button" class="btn btn-ai btn-sm exp-ai-btn" onclick="improveBulletsWithAI(this)">✨ Improve with AI</button>
+          <label data-i18n="builder.exp.whatDidYouDo">${t('builder.exp.whatDidYouDo')}</label>
+          <button type="button" class="btn btn-ai btn-sm exp-ai-btn" onclick="improveBulletsWithAI(this)" data-i18n="builder.ai.improveWithAI">${t('builder.ai.improveWithAI')}</button>
         </div>
-        <textarea class="exp-bullets" placeholder="Led go-to-market for a repositioning that grew qualified pipeline by 30%" oninput="renderResume()"></textarea>
+        <textarea class="exp-bullets" placeholder="${t('builder.exp.bullets.placeholder')}" data-i18n-placeholder="builder.exp.bullets.placeholder" oninput="renderResume()"></textarea>
         <div class="ai-suggest-wrap exp-ai-suggest" hidden>
           <div class="ai-suggest-box exp-ai-text"></div>
           <div class="ai-suggest-actions">
-            <button type="button" class="btn btn-primary btn-sm" onclick="useExpAISuggestion(this)">Use this</button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="discardExpAISuggestion(this)">Discard</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="useExpAISuggestion(this)" data-i18n="builder.ai.useThis">${t('builder.ai.useThis')}</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="discardExpAISuggestion(this)" data-i18n="builder.ai.discard">${t('builder.ai.discard')}</button>
           </div>
         </div>
         <p class="ai-suggest-error exp-ai-error" style="display:none;"></p>
@@ -1391,10 +2494,10 @@
   function renderResume(){
     const val = (id) => document.getElementById(id).value.trim();
 
-    document.getElementById('out-name').textContent = val('in-name') || 'Your name';
-    document.getElementById('out-role').textContent = val('in-role') || 'Target role';
+    document.getElementById('out-name').textContent = val('in-name') || t('builder.preview.yourName');
+    document.getElementById('out-role').textContent = val('in-role') || t('builder.field.role');
     document.getElementById('out-contact').textContent = val('in-contact');
-    document.getElementById('out-summary').textContent = val('in-summary') || 'Your summary will appear here as you type.';
+    document.getElementById('out-summary').textContent = val('in-summary') || t('builder.preview.summaryPlaceholder');
 
     const photoUrl = val('in-photo');
     const outPhoto = document.getElementById('out-photo');
@@ -1405,11 +2508,11 @@
     const expListOut = document.getElementById('out-exp-list');
     const entries = document.querySelectorAll('.exp-entry');
     if (entries.length === 0){
-      expListOut.innerHTML = '<div class="lexp-empty">Your roles will appear here.</div>';
+      expListOut.innerHTML = `<div class="lexp-empty">${t('builder.preview.rolesEmpty')}</div>`;
     } else {
       expListOut.innerHTML = '';
       entries.forEach(entry => {
-        const title = entry.querySelector('.exp-title').value.trim() || 'Job title';
+        const title = entry.querySelector('.exp-title').value.trim() || t('builder.exp.jobTitle');
         const company = entry.querySelector('.exp-company').value.trim();
         const start = entry.querySelector('.exp-start').value.trim();
         const end = entry.querySelector('.exp-end').value.trim();
@@ -1467,7 +2570,7 @@
 
   function downloadResumePDF(){
     if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
-      promptUpgrade('Downloading your resume as a PDF needs an active trial or subscription.');
+      promptUpgrade(t('upgrade.needPdf'));
       return;
     }
     const name = document.getElementById('in-name').value.trim();
@@ -1504,21 +2607,21 @@
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + (currentSession && currentSession.access_token),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(Object.assign({ lang: currentLang }, payload)),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+    if (!res.ok) throw new Error(data.error || t('interview.requestFailed', { status: res.status }));
     return data.text;
   }
 
   async function improveSummaryWithAI(btn){
     if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
-      promptUpgrade('AI-assisted writing needs an active trial or subscription.');
+      promptUpgrade(t('upgrade.needAI'));
       return;
     }
     const role = document.getElementById('in-role').value.trim();
     if (!role){
-      alert('Add a target role first so the AI knows what to write for.');
+      alert(t('builder.ai.needRole'));
       return;
     }
     const skills = document.getElementById('in-skills').value.trim();
@@ -1532,7 +2635,7 @@
     errorEl.style.display = 'none';
     const originalLabel = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Writing…';
+    btn.textContent = t('builder.ai.writing');
     try {
       const text = await callGenerateContent({
         type: 'summary',
@@ -1543,7 +2646,7 @@
       document.getElementById('summary-ai-text').textContent = text;
       suggestWrap.hidden = false;
     } catch (err) {
-      errorEl.textContent = err.message || 'Could not generate a summary right now.';
+      errorEl.textContent = err.message || t('builder.ai.summaryError');
       errorEl.style.display = 'block';
     } finally {
       btn.disabled = false;
@@ -1567,13 +2670,13 @@
 
   async function improveBulletsWithAI(btn){
     if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
-      promptUpgrade('AI-assisted writing needs an active trial or subscription.');
+      promptUpgrade(t('upgrade.needAI'));
       return;
     }
     const entry = btn.closest('.exp-entry');
     const role = entry.querySelector('.exp-title').value.trim() || document.getElementById('in-role').value.trim();
     if (!role){
-      alert('Add a job title for this role first so the AI knows what to write for.');
+      alert(t('builder.ai.needJobTitle'));
       return;
     }
     const company = entry.querySelector('.exp-company').value.trim();
@@ -1585,13 +2688,13 @@
     errorEl.style.display = 'none';
     const originalLabel = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Writing…';
+    btn.textContent = t('builder.ai.writing');
     try {
       const result = await callGenerateContent({ type: 'bullet', role, company, text });
       entry.querySelector('.exp-ai-text').textContent = result;
       suggestWrap.hidden = false;
     } catch (err) {
-      errorEl.textContent = err.message || 'Could not generate bullet points right now.';
+      errorEl.textContent = err.message || t('builder.ai.bulletsError');
       errorEl.style.display = 'block';
     } finally {
       btn.disabled = false;
@@ -1810,7 +2913,7 @@
     const container = document.getElementById('kw-chips');
     if (!container) return;
     if (matched.length === 0 && missing.length === 0){
-      container.innerHTML = '<span class="lexp-empty">Paste a job description above to see matched and missing keywords.</span>';
+      container.innerHTML = `<span class="lexp-empty">${t('target.emptyState')}</span>`;
       return;
     }
     const chips = [
@@ -1835,51 +2938,51 @@
     const addKeyword = (text) => keywordTips.push({ text, color: 'var(--amber)' });
     const addFormatting = (text) => formattingTips.push({ text, color: 'var(--plum)' });
 
-    if (!resume.name) addContent('Add your full name at the top.');
-    if (!resume.role) addContent("Add a target role so it's clear what you're applying for.");
-    if (!resume.contact) addContent('Add a contact line — email, location, and/or LinkedIn.');
-    else if (!resume.contact.includes('@')) addFormatting('Include an email address in your contact line.');
+    if (!resume.name) addContent(t('tip.needName'));
+    if (!resume.role) addContent(t('tip.needRole'));
+    if (!resume.contact) addContent(t('tip.needContact'));
+    else if (!resume.contact.includes('@')) addFormatting(t('tip.needEmail'));
 
-    if (!resume.summary) addContent('Add a 2-3 sentence professional summary.');
-    else if (resume.summary.length < 40) addContent('Expand your summary to at least a couple of full sentences.');
-    else if (resume.summary.length > 600) addFormatting('Trim your summary — aim for a short paragraph, not a page.');
+    if (!resume.summary) addContent(t('tip.needSummary'));
+    else if (resume.summary.length < 40) addContent(t('tip.expandSummary'));
+    else if (resume.summary.length > 600) addFormatting(t('tip.trimSummary'));
 
     const allBullets = resume.entries.flatMap(e => e.bullets);
 
     if (resume.entries.length === 0){
-      addContent('Add at least one work experience entry.');
+      addContent(t('tip.needExperience'));
     } else {
       const missingCompany = resume.entries.filter(e => !e.company).length;
-      if (missingCompany) addContent(`Add the company name for ${missingCompany === resume.entries.length ? 'each role' : missingCompany + ' of your roles'}.`);
+      if (missingCompany) addContent(t('tip.missingCompany', { n: missingCompany }));
       const missingDates = resume.entries.filter(e => !e.start && !e.end).length;
-      if (missingDates) addContent(`Add start/end dates for ${missingDates === resume.entries.length ? 'each role' : missingDates + ' of your roles'}.`);
+      if (missingDates) addContent(t('tip.missingDates', { n: missingDates }));
       const missingBullets = resume.entries.filter(e => e.bullets.length === 0).length;
-      if (missingBullets) addContent(`Add at least one bullet describing what you did for ${missingBullets === resume.entries.length ? 'each role' : missingBullets + ' of your roles'}.`);
+      if (missingBullets) addContent(t('tip.missingBullets', { n: missingBullets }));
 
       if (allBullets.length){
         const noVerb = allBullets.filter(b => {
           const firstWord = (b.match(/[a-zA-Z']+/) || [''])[0].toLowerCase();
           return !STRONG_VERBS.has(firstWord);
         }).length;
-        if (noVerb) addImpact(`${noVerb} of your ${allBullets.length} bullet${allBullets.length > 1 ? 's' : ''} ${noVerb > 1 ? "don't" : "doesn't"} open with a strong action verb (e.g. Led, Built, Reduced) — rewrite ${noVerb > 1 ? 'them' : 'it'} to start with one.`);
+        if (noVerb) addImpact(t('tip.noVerb', { n: noVerb, total: allBullets.length }));
         const noMetric = allBullets.filter(b => !/\d/.test(b)).length;
-        if (noMetric) addImpact(`${noMetric} of your bullets have no numbers — add a metric (%, $, or count) to show real impact.`);
+        if (noMetric) addImpact(t('tip.noMetric', { n: noMetric }));
       }
     }
 
-    if (!resume.edu) addContent('Add your education.');
-    if (resume.skills.length < 6) addContent(`List a few more skills — you have ${resume.skills.length}, aim for at least 6.`);
+    if (!resume.edu) addContent(t('tip.needEdu'));
+    if (resume.skills.length < 6) addContent(t('tip.fewSkills', { n: resume.skills.length }));
 
     if (keywordInfo.score !== null && keywordInfo.missing.length){
-      addKeyword(`Work these keywords from the job description in, if they genuinely apply: ${keywordInfo.missing.slice(0, 5).join(', ')}.`);
+      addKeyword(t('tip.missingKeywords', { list: keywordInfo.missing.slice(0, 5).join(', ') }));
     } else if (keywordInfo.score === null){
-      addKeyword('Paste a job description in the Keyword Targeting section below to check for missing keywords.');
+      addKeyword(t('tip.pasteJobDescription'));
     }
 
     const longBullets = allBullets.filter(b => b.length > 260).length;
-    if (longBullets) addFormatting(`${longBullets} of your bullets ${longBullets > 1 ? 'are' : 'is'} very long — break ${longBullets > 1 ? 'them' : 'it'} into shorter, punchier lines.`);
+    if (longBullets) addFormatting(t('tip.longBullets', { n: longBullets }));
     const hasStrayChars = allBullets.some(b => /[•\t]/.test(b));
-    if (hasStrayChars) addFormatting('Remove bullet characters (•) or tabs from your bullet lines — one achievement per line is enough.');
+    if (hasStrayChars) addFormatting(t('tip.strayChars'));
 
     return [...contentTips, ...impactTips, ...keywordTips, ...formattingTips].slice(0, 6);
   }
@@ -1888,13 +2991,13 @@
     const container = document.getElementById('score-suggestions');
     if (!container) return;
     if (tips.length === 0){
-      container.innerHTML = '<div class="suggestions-empty">Nice — no quick wins left. Your resume covers everything we check for here.</div>';
+      container.innerHTML = `<div class="suggestions-empty">${t('score.noQuickWins')}</div>`;
       return;
     }
-    container.innerHTML = tips.map(t => `
+    container.innerHTML = tips.map(tip => `
       <div class="suggestion-row">
-        <span class="suggestion-tag" style="background:${t.color};"></span>
-        <span>${escapeHtml(t.text)}</span>
+        <span class="suggestion-tag" style="background:${tip.color};"></span>
+        <span>${escapeHtml(tip.text)}</span>
       </div>
     `).join('');
   }
@@ -2117,7 +3220,7 @@
   function renderJobs(jobs){
     const listEl = document.getElementById('job-list');
     if (!jobs || jobs.length === 0){
-      listEl.innerHTML = '<p class="lexp-empty">No matching jobs found. Try a different role or location.</p>';
+      listEl.innerHTML = `<p class="lexp-empty">${t('jobs.noResults')}</p>`;
       return;
     }
 
@@ -2139,12 +3242,12 @@
       return `
         <div class="job-row">
           <div class="job-info">
-            <div class="jtitle">${escapeHtml(job.title || 'Untitled role')}</div>
+            <div class="jtitle">${escapeHtml(job.title || t('jobs.untitledRole'))}</div>
             <div class="jmeta">${escapeHtml(metaParts.join(' · '))}</div>
           </div>
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            ${score !== null ? `<span class="match-pill"${pillStyle}>${score}% match</span>` : ''}
-            <a class="btn btn-ghost btn-sm" href="${escapeHtml(safeJobUrl(job.url))}" target="_blank" rel="noopener noreferrer">View</a>
+            ${score !== null ? `<span class="match-pill"${pillStyle}>${t('jobs.matchPct', { n: score })}</span>` : ''}
+            <a class="btn btn-ghost btn-sm" href="${escapeHtml(safeJobUrl(job.url))}" target="_blank" rel="noopener noreferrer">${t('jobs.view')}</a>
           </div>
         </div>
       `;
@@ -2153,7 +3256,7 @@
 
   async function searchJobs(){
     if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
-      promptUpgrade('Job search needs an active trial or subscription.');
+      promptUpgrade(t('upgrade.needJobs'));
       return;
     }
     const what = document.getElementById('job-query').value.trim() || document.getElementById('in-role').value.trim();
@@ -2162,11 +3265,11 @@
     const listEl = document.getElementById('job-list');
 
     if (!what){
-      listEl.innerHTML = '<p class="lexp-empty">Enter a role or keywords to search.</p>';
+      listEl.innerHTML = `<p class="lexp-empty">${t('jobs.enterRole')}</p>`;
       return;
     }
 
-    listEl.innerHTML = '<p class="lexp-empty">Searching…</p>';
+    listEl.innerHTML = `<p class="lexp-empty">${t('jobs.searching')}</p>`;
     try {
       const params = new URLSearchParams({ what, country });
       if (where) params.set('where', where);
@@ -2176,11 +3279,11 @@
       const data = await res.json();
       if (!res.ok){
         const detail = data.detail ? ' — ' + String(data.detail).slice(0, 300) : '';
-        throw new Error((data.error || ('Search failed (' + res.status + ')')) + detail);
+        throw new Error((data.error || t('jobs.searchFailed', { status: res.status })) + detail);
       }
       renderJobs(data.jobs);
     } catch (err) {
-      listEl.innerHTML = `<p class="lexp-empty">Could not load jobs (${escapeHtml(err.message)}).</p>`;
+      listEl.innerHTML = `<p class="lexp-empty">${t('jobs.loadError', { message: escapeHtml(err.message) })}</p>`;
     }
   }
 
@@ -2260,7 +3363,7 @@
 
   function toggleVoiceOutput(){
     voiceOutputEnabled = !voiceOutputEnabled;
-    document.getElementById('voice-toggle-btn').textContent = voiceOutputEnabled ? '🔊 Voice on' : '🔇 Voice off';
+    document.getElementById('voice-toggle-btn').textContent = voiceOutputEnabled ? t('interview.voiceOn') : t('interview.voiceOff');
     if (!voiceOutputEnabled) window.speechSynthesis.cancel();
   }
 
@@ -2326,7 +3429,7 @@
     if (voiceOutputSupported) window.speechSynthesis.cancel();
 
     if (typeof hasActiveAccess === 'function' && !hasActiveAccess()){
-      promptUpgrade('The AI mock interview needs an active trial or subscription.');
+      promptUpgrade(t('upgrade.needInterview'));
       return;
     }
 
@@ -2350,10 +3453,10 @@
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + (currentSession && currentSession.access_token),
         },
-        body: JSON.stringify({ history: interviewHistory })
+        body: JSON.stringify({ history: interviewHistory, lang: currentLang })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || ('Request failed (' + response.status + ')'));
+      if (!response.ok) throw new Error(data.error || t('interview.requestFailed', { status: response.status }));
 
       removeTypingIndicator(typingId);
       appendChatMessage('ai', data.reply);
@@ -2361,11 +3464,11 @@
       interviewHistory.push({ role: 'ai', content: data.reply });
       updateInterviewScores(data.scores);
       if (data.tip) {
-        document.getElementById('fb-tip').innerHTML = '<b>Tip:</b> ' + escapeHtml(data.tip);
+        document.getElementById('fb-tip').innerHTML = '<b>' + escapeHtml(t('interview.tipLabel')) + ':</b> ' + escapeHtml(data.tip);
       }
     } catch (err) {
       removeTypingIndicator(typingId);
-      errEl.textContent = 'Could not reach the AI interviewer (' + err.message + ').';
+      errEl.textContent = t('interview.unreachable', { message: err.message });
       errEl.style.display = 'block';
     } finally {
       interviewBusy = false;
@@ -2385,49 +3488,49 @@
 
 <div class="modal-overlay" id="auth-modal" hidden>
   <div class="modal-card">
-    <button type="button" class="modal-close" onclick="closeAuthModal()" aria-label="Close">&times;</button>
+    <button type="button" class="modal-close" onclick="closeAuthModal()" aria-label="Close" data-i18n-aria="common.close">&times;</button>
     <div id="auth-form-wrap">
       <div class="modal-tabbar">
-        <button type="button" class="modal-tab active" data-mode="login" onclick="setAuthMode('login')">Log in</button>
-        <button type="button" class="modal-tab" data-mode="signup" onclick="setAuthMode('signup')">Sign up</button>
+        <button type="button" class="modal-tab active" data-mode="login" onclick="setAuthMode('login')" data-i18n="nav.login">Log in</button>
+        <button type="button" class="modal-tab" data-mode="signup" onclick="setAuthMode('signup')" data-i18n="auth.signup">Sign up</button>
       </div>
       <form id="auth-form" data-mode="login" onsubmit="handleAuthSubmit(event)" novalidate>
         <div class="field" id="auth-plan-field" hidden>
-          <label>Choose your plan</label>
+          <label data-i18n="auth.choosePlan">Choose your plan</label>
           <div class="plan-toggle">
-            <button type="button" class="plan-option" data-plan="monthly" onclick="selectAuthPlan('monthly')">Monthly<span class="plan-price">$13/mo</span></button>
-            <button type="button" class="plan-option selected" data-plan="yearly" onclick="selectAuthPlan('yearly')">Yearly<span class="plan-price">$89/yr</span><span class="plan-save">Save 43%</span></button>
+            <button type="button" class="plan-option" data-plan="monthly" onclick="selectAuthPlan('monthly')"><span data-i18n="pricing.monthly.tag">Monthly</span><span class="plan-price">$13/mo</span></button>
+            <button type="button" class="plan-option selected" data-plan="yearly" onclick="selectAuthPlan('yearly')"><span data-i18n="pricing.yearly.tag2">Yearly</span><span class="plan-price">$89/yr</span><span class="plan-save" data-i18n="auth.save43">Save 43%</span></button>
           </div>
           <input type="hidden" id="auth-plan" value="yearly">
         </div>
         <div class="field">
-          <label for="auth-email">Email</label>
+          <label for="auth-email" data-i18n="auth.email">Email</label>
           <input id="auth-email" type="email" required autocomplete="email">
         </div>
         <div class="field">
-          <label for="auth-password">Password</label>
+          <label for="auth-password" data-i18n="auth.password">Password</label>
           <input id="auth-password" type="password" required minlength="8" autocomplete="current-password">
-          <p id="auth-password-hint" class="field-hint" hidden>At least 8 characters, with a letter and a number.</p>
+          <p id="auth-password-hint" class="field-hint" hidden data-i18n="auth.passwordHint">At least 8 characters, with a letter and a number.</p>
         </div>
         <div class="field" id="auth-confirm-field" hidden>
-          <label for="auth-password-confirm">Confirm password</label>
+          <label for="auth-password-confirm" data-i18n="auth.confirmPassword">Confirm password</label>
           <input id="auth-password-confirm" type="password" minlength="8" autocomplete="new-password">
         </div>
         <p class="auth-error" id="auth-error" hidden></p>
-        <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;">Log in</button>
+        <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;" data-i18n="nav.login">Log in</button>
       </form>
-      <p id="auth-trial-note" style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;" hidden>7 days free, then your card is charged automatically unless you cancel first. We'll email you before it's charged.</p>
-      <p style="font-size:11.5px; color:var(--ink-soft); margin-top:10px; text-align:center;">By continuing, you agree to LandIt's <a href="/terms.html" target="_blank" style="color:inherit; text-decoration:underline;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:inherit; text-decoration:underline;">Privacy Policy</a>.</p>
+      <p id="auth-trial-note" style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;" hidden data-i18n="auth.trialNote">7 days free, then your card is charged automatically unless you cancel first. We'll email you before it's charged.</p>
+      <p style="font-size:11.5px; color:var(--ink-soft); margin-top:10px; text-align:center;" data-i18n-html="auth.agreeTerms">By continuing, you agree to LandIt's <a href="/terms.html" target="_blank" style="color:inherit; text-decoration:underline;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:inherit; text-decoration:underline;">Privacy Policy</a>.</p>
     </div>
     <div id="auth-success-wrap" hidden>
       <div style="text-align:center;">
         <div style="font-size:36px; margin-bottom:12px;">✉️</div>
-        <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 10px;">Check your email</h3>
-        <p style="font-size:14px; color:var(--ink-soft); line-height:1.6; margin:0 0 20px;">
+        <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 10px;" data-i18n="auth.checkEmail">Check your email</h3>
+        <p style="font-size:14px; color:var(--ink-soft); line-height:1.6; margin:0 0 20px;" data-i18n-html="auth.checkEmailBody">
           We sent a confirmation link to <strong id="auth-success-email"></strong>. Click it, then log back in here — we'll take you straight to entering your card to start your free trial.
         </p>
-        <button type="button" class="btn btn-primary" style="width:100%;" onclick="closeAuthModal()">Got it</button>
-        <a href="#" style="display:block; margin-top:14px; font-size:12.5px; color:var(--ink-soft);" onclick="event.preventDefault(); resendConfirmationEmail();" id="auth-resend-link">Didn't get it? Resend</a>
+        <button type="button" class="btn btn-primary" style="width:100%;" onclick="closeAuthModal()" data-i18n="common.gotIt">Got it</button>
+        <a href="#" style="display:block; margin-top:14px; font-size:12.5px; color:var(--ink-soft);" onclick="event.preventDefault(); resendConfirmationEmail();" id="auth-resend-link" data-i18n="auth.resend">Didn't get it? Resend</a>
       </div>
     </div>
   </div>
@@ -2435,37 +3538,37 @@
 
 <div class="modal-overlay" id="account-modal" hidden>
   <div class="modal-card">
-    <button type="button" class="modal-close" onclick="closeAccountModal()" aria-label="Close">&times;</button>
-    <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 20px;">Account</h3>
+    <button type="button" class="modal-close" onclick="closeAccountModal()" aria-label="Close" data-i18n-aria="common.close">&times;</button>
+    <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 20px;" data-i18n="account.title">Account</h3>
 
     <div class="field">
-      <label>Email</label>
+      <label data-i18n="auth.email">Email</label>
       <p id="account-email" style="font-size:14.5px; font-weight:600; margin:0;"></p>
     </div>
 
     <div class="field">
-      <label>Plan</label>
+      <label data-i18n="account.plan">Plan</label>
       <p id="account-plan" style="font-size:14.5px; font-weight:600; margin:0;"></p>
     </div>
 
-    <button type="button" class="btn btn-ghost" style="width:100%; margin-top:6px;" id="account-billing-btn" onclick="openBillingPortal()" hidden>Manage billing</button>
-    <a class="btn btn-ghost" style="width:100%; margin-top:6px; display:block; text-align:center;" id="account-upgrade-link" href="#pricing" onclick="closeAccountModal()" hidden>Choose a plan</a>
+    <button type="button" class="btn btn-ghost" style="width:100%; margin-top:6px;" id="account-billing-btn" onclick="openBillingPortal()" hidden data-i18n="account.manageBilling">Manage billing</button>
+    <a class="btn btn-ghost" style="width:100%; margin-top:6px; display:block; text-align:center;" id="account-upgrade-link" href="#pricing" onclick="closeAccountModal()" hidden data-i18n="account.choosePlan">Choose a plan</a>
 
-    <div class="field-divider">CHANGE PASSWORD</div>
+    <div class="field-divider" data-i18n="account.changePassword">CHANGE PASSWORD</div>
     <form id="password-change-form" onsubmit="handlePasswordChange(event)" novalidate>
       <div class="field">
-        <label for="new-password">New password</label>
+        <label for="new-password" data-i18n="account.newPassword">New password</label>
         <input id="new-password" type="password" required minlength="8" autocomplete="new-password">
-        <p class="field-hint">At least 8 characters, with a letter and a number.</p>
+        <p class="field-hint" data-i18n="auth.passwordHint">At least 8 characters, with a letter and a number.</p>
       </div>
       <p class="auth-error" id="password-change-error" hidden></p>
-      <p id="password-change-success" style="display:none; font-size:13px; color:var(--forest-deep); font-weight:600; margin:-4px 0 16px;">Password updated.</p>
-      <button type="submit" class="btn btn-ghost" style="width:100%;" id="password-change-btn">Update password</button>
+      <p id="password-change-success" style="display:none; font-size:13px; color:var(--forest-deep); font-weight:600; margin:-4px 0 16px;" data-i18n="account.passwordUpdated">Password updated.</p>
+      <button type="submit" class="btn btn-ghost" style="width:100%;" id="password-change-btn" data-i18n="account.updatePassword">Update password</button>
     </form>
 
-    <div class="field-divider" style="color:var(--clay);">DANGER ZONE</div>
-    <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 12px;">Permanently deletes your account, resume data, and cancels any active subscription. This can't be undone.</p>
-    <button type="button" class="btn btn-danger" style="width:100%;" onclick="confirmDeleteAccount()" id="delete-account-btn">Delete account</button>
+    <div class="field-divider" style="color:var(--clay);" data-i18n="account.dangerZone">DANGER ZONE</div>
+    <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 12px;" data-i18n="account.dangerNote">Permanently deletes your account, resume data, and cancels any active subscription. This can't be undone.</p>
+    <button type="button" class="btn btn-danger" style="width:100%;" onclick="confirmDeleteAccount()" id="delete-account-btn" data-i18n="account.deleteAccount">Delete account</button>
   </div>
 </div>
 
@@ -2503,7 +3606,7 @@
 
   function openAuthModal(mode){
     if (!supabaseReady){
-      alert('Accounts aren\'t configured on this deployment yet (missing Supabase URL/key).');
+      alert(t('auth.notConfigured'));
       return;
     }
     document.getElementById('auth-form-wrap').hidden = false;
@@ -2524,7 +3627,7 @@
   function setAuthMode(mode){
     document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
     document.getElementById('auth-form').dataset.mode = mode;
-    document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? 'Continue to payment' : 'Log in';
+    document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? t('auth.continueToPayment') : t('nav.login');
     document.getElementById('auth-error').hidden = true;
     const isSignup = mode === 'signup';
     document.getElementById('auth-plan-field').hidden = !isSignup;
@@ -2557,7 +3660,7 @@
     errEl.hidden = true;
 
     if (!email || !password){
-      errEl.textContent = 'Please enter your email and password.';
+      errEl.textContent = t('auth.err.missingFields');
       errEl.hidden = false;
       return;
     }
@@ -2565,12 +3668,12 @@
     if (mode === 'signup'){
       const confirm = document.getElementById('auth-password-confirm').value;
       if (!isPasswordStrongEnough(password)){
-        errEl.textContent = 'Password must be at least 8 characters and include a letter and a number.';
+        errEl.textContent = t('auth.err.weakPassword');
         errEl.hidden = false;
         return;
       }
       if (password !== confirm){
-        errEl.textContent = 'Passwords don\'t match.';
+        errEl.textContent = t('auth.err.passwordsDontMatch');
         errEl.hidden = false;
         return;
       }
@@ -2604,7 +3707,7 @@
         closeAuthModal();
       }
     } catch (err) {
-      errEl.textContent = err.message || 'Something went wrong. Please try again.';
+      errEl.textContent = err.message || t('auth.err.generic');
       errEl.hidden = false;
     } finally {
       btn.disabled = false;
@@ -2615,12 +3718,12 @@
     const email = document.getElementById('auth-success-email').textContent;
     const link = document.getElementById('auth-resend-link');
     if (!email) return;
-    link.textContent = 'Sending…';
+    link.textContent = t('auth.sending');
     try {
       const { error } = await supabaseClient.auth.resend({ type: 'signup', email });
-      link.textContent = error ? 'Could not resend — try again' : 'Sent! Check your inbox';
+      link.textContent = error ? t('auth.resendFailed') : t('auth.resendSent');
     } catch {
-      link.textContent = 'Could not resend — try again';
+      link.textContent = t('auth.resendFailed');
     }
   }
 
@@ -2641,28 +3744,28 @@
     const planEl = document.getElementById('account-plan');
 
     if (status === 'active'){
-      planEl.textContent = 'LandIt Pro (active)';
+      planEl.textContent = t('account.status.active');
       billingBtn.hidden = false;
       upgradeLink.hidden = true;
     } else if (status === 'past_due'){
-      planEl.textContent = 'Past due — update your payment method';
+      planEl.textContent = t('account.status.pastDue');
       billingBtn.hidden = false;
       upgradeLink.hidden = true;
     } else if (status === 'canceled'){
-      planEl.textContent = 'Canceled';
+      planEl.textContent = t('account.status.canceled');
       billingBtn.hidden = !(currentProfile && currentProfile.stripe_customer_id);
       upgradeLink.hidden = false;
     } else if (currentProfile && currentProfile.stripe_subscription_id){
       // status === 'trialing' with a real Stripe subscription behind it -
       // a card is on file and this trial will auto-convert to paid.
       const daysLeft = trialDaysLeft(currentProfile.trial_started_at);
-      planEl.textContent = daysLeft > 0 ? `Free trial — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left (auto-renews)` : 'Trial ended';
+      planEl.textContent = daysLeft > 0 ? t('account.status.trialDaysLeft', { n: daysLeft }) : t('account.status.trialEnded');
       billingBtn.hidden = false;
       upgradeLink.hidden = true;
     } else {
       // Signed up but never finished Checkout, so no card is on file and
       // no trial has actually started yet.
-      planEl.textContent = 'Trial not started — add a card to begin';
+      planEl.textContent = t('account.status.trialNotStarted');
       billingBtn.hidden = true;
       upgradeLink.hidden = false;
     }
@@ -2680,7 +3783,7 @@
   async function openBillingPortal(){
     const btn = document.getElementById('account-billing-btn');
     const original = btn.textContent;
-    btn.textContent = 'Loading…';
+    btn.textContent = t('account.loading');
     btn.disabled = true;
     try {
       const res = await fetch('/api/create-portal-session', {
@@ -2688,10 +3791,10 @@
         headers: { 'Authorization': 'Bearer ' + currentSession.access_token },
       });
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || ('Request failed (' + res.status + ')'));
+      if (!res.ok) throw new Error(payload.error || t('interview.requestFailed', { status: res.status }));
       window.location.href = payload.url;
     } catch (err) {
-      alert('Could not open billing portal: ' + err.message);
+      alert(t('account.billingPortalError', { message: err.message }));
       btn.textContent = original;
       btn.disabled = false;
     }
@@ -2707,7 +3810,7 @@
     successEl.style.display = 'none';
 
     if (!isPasswordStrongEnough(newPassword)){
-      errEl.textContent = 'Password must be at least 8 characters and include a letter and a number.';
+      errEl.textContent = t('auth.err.weakPassword');
       errEl.hidden = false;
       return;
     }
@@ -2719,7 +3822,7 @@
       successEl.style.display = 'block';
       document.getElementById('password-change-form').reset();
     } catch (err) {
-      errEl.textContent = err.message || 'Could not update password.';
+      errEl.textContent = err.message || t('account.passwordUpdateError');
       errEl.hidden = false;
     } finally {
       btn.disabled = false;
@@ -2727,12 +3830,12 @@
   }
 
   async function confirmDeleteAccount(){
-    if (!confirm('Delete your LandIt account? This permanently removes your resume data and cancels any active subscription. This cannot be undone.')) return;
-    if (!confirm('Are you sure? Type-and-confirm: this is your last chance to back out.')) return;
+    if (!confirm(t('account.deleteConfirm1'))) return;
+    if (!confirm(t('account.deleteConfirm2'))) return;
 
     const btn = document.getElementById('delete-account-btn');
     const original = btn.textContent;
-    btn.textContent = 'Deleting…';
+    btn.textContent = t('account.deleting');
     btn.disabled = true;
     try {
       const res = await fetch('/api/delete-account', {
@@ -2740,12 +3843,12 @@
         headers: { 'Authorization': 'Bearer ' + currentSession.access_token },
       });
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || ('Request failed (' + res.status + ')'));
+      if (!res.ok) throw new Error(payload.error || t('interview.requestFailed', { status: res.status }));
       closeAccountModal();
       await supabaseClient.auth.signOut();
-      alert('Your account has been deleted.');
+      alert(t('account.deleted'));
     } catch (err) {
-      alert('Could not delete account: ' + err.message);
+      alert(t('account.deleteError', { message: err.message }));
       btn.textContent = original;
       btn.disabled = false;
     }
@@ -2793,14 +3896,14 @@
 
   function promptUpgrade(message){
     if (!currentSession){
-      alert(message + ' Start your free 7-day trial to continue.');
+      alert(message + ' ' + t('upgrade.startTrialToContinue'));
       openAuthModal('signup');
       return;
     }
     if (currentProfile && currentProfile.subscription_status === 'trialing' && !currentProfile.stripe_subscription_id){
-      alert(message + " Add a card to start your free trial — you won't be charged until it ends.");
+      alert(message + ' ' + t('upgrade.addCardToStart'));
     } else {
-      alert(message + ' Your trial has ended — choose a plan to keep going.');
+      alert(message + ' ' + t('upgrade.trialEndedChoosePlan'));
     }
     const pricing = document.getElementById('pricing');
     if (pricing) pricing.scrollIntoView({ behavior: 'smooth' });
@@ -2813,29 +3916,43 @@
 
     if (!currentSession){
       container.innerHTML = `
-        <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('login');">Log in</a>
-        <a class="btn btn-primary btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start free trial</a>
+        <select id="lang-switch" class="lang-select" onchange="setLanguage(this.value)" aria-label="Language">
+          <option value="en">EN</option>
+          <option value="tr">TR</option>
+          <option value="de">DE</option>
+          <option value="no">NO</option>
+        </select>
+        <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('login');">${t('nav.login')}</a>
+        <a class="btn btn-primary btn-sm" href="#" onclick="event.preventDefault(); openAuthModal('signup');">${t('nav.startTrial')}</a>
       `;
+      syncLangSwitchEls();
       return;
     }
 
     let badge;
     if (currentProfile && currentProfile.subscription_status === 'active'){
-      badge = '<span class="trial-badge trial-badge-pro">Pro</span>';
+      badge = `<span class="trial-badge trial-badge-pro">${t('nav.badge.pro')}</span>`;
     } else if (currentProfile && currentProfile.subscription_status === 'trialing' && currentProfile.stripe_subscription_id){
       const daysLeft = trialDaysLeft(currentProfile.trial_started_at);
       badge = daysLeft > 0
-        ? `<span class="trial-badge">${daysLeft}d left in trial</span>`
-        : '<span class="trial-badge trial-badge-expired">Trial ended</span>';
+        ? `<span class="trial-badge">${escapeHtml(t('nav.badge.daysLeft', { n: daysLeft }))}</span>`
+        : `<span class="trial-badge trial-badge-expired">${t('account.status.trialEnded')}</span>`;
     } else {
-      badge = '<span class="trial-badge trial-badge-expired">Trial not started</span>';
+      badge = `<span class="trial-badge trial-badge-expired">${t('account.status.trialNotStartedShort')}</span>`;
     }
 
     container.innerHTML = `
+      <select id="lang-switch" class="lang-select" onchange="setLanguage(this.value)" aria-label="Language">
+        <option value="en">EN</option>
+        <option value="tr">TR</option>
+        <option value="de">DE</option>
+        <option value="no">NO</option>
+      </select>
       ${badge}
-      <a href="#" style="font-size:13.5px; color:var(--ink-soft); text-decoration:none; font-weight:600;" onclick="event.preventDefault(); openAccountModal();" title="Account settings">${escapeHtml(currentSession.user.email)}</a>
-      <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); handleLogout();">Log out</a>
+      <a href="#" style="font-size:13.5px; color:var(--ink-soft); text-decoration:none; font-weight:600;" onclick="event.preventDefault(); openAccountModal();" title="${escapeHtml(t('nav.accountSettings'))}">${escapeHtml(currentSession.user.email)}</a>
+      <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); handleLogout();">${t('nav.logout')}</a>
     `;
+    syncLangSwitchEls();
   }
 
   // The hero, and the closing CTA band, both pitch starting a free trial -
@@ -3014,7 +4131,7 @@
     const hasContent = current.name || current.role || current.contact || current.summary ||
       current.edu || current.skills.length ||
       current.entries.some(e => e.title || e.company || e.bullets.length);
-    if (hasContent && !confirm("This will replace what you've already entered with an example resume. Continue?")) return;
+    if (hasContent && !confirm(t('builder.example.replaceConfirm'))) return;
     applyResumeSnapshot({ ...example.data, template: example.template });
     document.getElementById('builder-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -3053,7 +4170,7 @@
     }
     const original = btn ? btn.textContent : null;
     if (btn){
-      btn.textContent = 'Redirecting…';
+      btn.textContent = t('checkout.redirecting');
       btn.style.pointerEvents = 'none';
     }
     try {
@@ -3066,10 +4183,10 @@
         body: JSON.stringify({ plan }),
       });
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || ('Checkout failed (' + res.status + ')'));
+      if (!res.ok) throw new Error(payload.error || t('checkout.failed', { status: res.status }));
       window.location.href = payload.url;
     } catch (err) {
-      alert('Could not start checkout: ' + err.message);
+      alert(t('checkout.startError', { message: err.message }));
       if (btn){
         btn.textContent = original;
         btn.style.pointerEvents = '';
@@ -3096,10 +4213,10 @@
     if (!outcome) return;
     const banner = document.getElementById('checkout-banner');
     if (outcome === 'success'){
-      banner.textContent = "You're on LandIt Pro! It can take a few seconds for your account to update.";
+      banner.textContent = t('checkout.success');
       banner.classList.remove('cancel');
     } else if (outcome === 'cancel'){
-      banner.textContent = 'Checkout was canceled — no charge was made.';
+      banner.textContent = t('checkout.canceled');
       banner.classList.add('cancel');
     } else {
       return;
