@@ -29,6 +29,10 @@ create table if not exists public.profiles (
 -- the first time that email is sent, so a user is never emailed twice.
 alter table public.profiles add column if not exists trial_ended_email_sent_at timestamptz;
 alter table public.profiles add column if not exists cancel_feedback_email_sent_at timestamptz;
+-- Set once when Stripe's customer.subscription.trial_will_end fires (its
+-- default 3-days-before-charge notice) so the "your card is about to be
+-- charged" email (api/stripe-webhook.js) is sent exactly once per trial.
+alter table public.profiles add column if not exists trial_ending_email_sent_at timestamptz;
 
 alter table public.profiles enable row level security;
 

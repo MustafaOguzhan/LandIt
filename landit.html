@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LandIt — Build a resume that lands the job</title>
-<meta name="description" content="LandIt writes, scores, and tailors your resume for every application, then runs you through a real AI mock interview so you walk in ready. Free 7-day trial, no credit card needed.">
+<meta name="description" content="LandIt writes, scores, and tailors your resume for every application, then runs you through a real AI mock interview so you walk in ready. Free 7-day trial.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LandIt">
 <meta property="og:title" content="LandIt — Build a resume that lands the job">
@@ -238,6 +238,15 @@
   .field-hint{font-size:12px; color:var(--ink-soft); margin:6px 0 0;}
   .field-label-row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;}
   .field-label-row label{margin:0;}
+  .plan-toggle{display:flex; gap:8px;}
+  .plan-option{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:11px 10px; border-radius:var(--radius-m); border:1px solid var(--line); background:#fff; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:700; color:var(--ink-soft); cursor:pointer; text-align:center; transition:border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease;}
+  .plan-option:hover{border-color:var(--ink-soft);}
+  .plan-option:active{transform:scale(0.97);}
+  .plan-option.selected{border-color:var(--forest); background:var(--forest-tint); color:var(--ink);}
+  .plan-option .plan-price{font-size:12px; font-weight:600; color:var(--ink-soft);}
+  .plan-option.selected .plan-price{color:var(--forest-deep);}
+  .plan-option .plan-save{font-size:10.5px; font-weight:700; color:var(--forest-deep); background:var(--forest-tint); padding:1px 7px; border-radius:999px; margin-top:1px;}
+  .plan-option:not(.selected) .plan-save{background:var(--amber-tint); color:#8A5A16;}
   .ai-suggest-wrap{margin-top:10px; padding:12px 14px; border-radius:var(--radius-m); background:var(--plum-tint);}
   .ai-suggest-box{font-size:13.5px; line-height:1.55; color:var(--ink); white-space:pre-wrap;}
   .ai-suggest-actions{display:flex; gap:8px; margin-top:10px;}
@@ -511,7 +520,7 @@
         <a class="btn btn-primary" href="#" onclick="event.preventDefault(); openAuthModal('signup');">Start your 7-day free trial</a>
         <a class="btn btn-ghost" href="#ai-interview">Try an AI interview</a>
       </div>
-      <p class="hero-note">No credit card needed to try it. Cancel anytime during your trial.</p>
+      <p class="hero-note">Free for 7 days, then it continues automatically — cancel anytime before your trial ends and you won't be charged.</p>
     </div>
     <div class="preview-card">
       <div class="preview-topline">
@@ -897,7 +906,7 @@
     <div class="section-head" style="margin-left:auto; margin-right:auto; text-align:center;">
       <span class="kicker" style="color:var(--teal);">PRICING</span>
       <h2>Try it free. Keep it if it works.</h2>
-      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, no card required. After that, monthly or yearly — your call.</p>
+      <p style="margin-left:auto;margin-right:auto;">Seven days, full access, then it continues on the plan you pick — cancel anytime before it ends and you won't be charged.</p>
     </div>
     <div class="price-grid">
       <div class="price-card">
@@ -909,6 +918,7 @@
           <li>✓ 1 keyword-targeted resume</li>
           <li>✓ 2 interview practice sessions</li>
         </ul>
+        <p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 14px;">Card required to start — cancel before day 7 to avoid being charged.</p>
         <a class="btn btn-ghost" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="width:100%;">Start free trial</a>
       </div>
       <div class="price-card">
@@ -942,7 +952,7 @@
 
 <div class="cta-band">
   <h2>Your next job is one resume away.</h2>
-  <p>Start free. No card, no pressure — just seven days to see if it lands.</p>
+  <p>Start free for seven days, cancel anytime before it ends — no charge, no hassle.</p>
   <div class="hero-actions">
     <a class="btn btn-primary" href="#" onclick="event.preventDefault(); openAuthModal('signup');" style="background:var(--amber); color:var(--ink);">Start your free trial</a>
   </div>
@@ -2316,6 +2326,14 @@
         <button type="button" class="modal-tab" data-mode="signup" onclick="setAuthMode('signup')">Sign up</button>
       </div>
       <form id="auth-form" data-mode="login" onsubmit="handleAuthSubmit(event)" novalidate>
+        <div class="field" id="auth-plan-field" hidden>
+          <label>Choose your plan</label>
+          <div class="plan-toggle">
+            <button type="button" class="plan-option" data-plan="monthly" onclick="selectAuthPlan('monthly')">Monthly<span class="plan-price">$13/mo</span></button>
+            <button type="button" class="plan-option selected" data-plan="yearly" onclick="selectAuthPlan('yearly')">Yearly<span class="plan-price">$89/yr</span><span class="plan-save">Save 43%</span></button>
+          </div>
+          <input type="hidden" id="auth-plan" value="yearly">
+        </div>
         <div class="field">
           <label for="auth-email">Email</label>
           <input id="auth-email" type="email" required autocomplete="email">
@@ -2332,7 +2350,7 @@
         <p class="auth-error" id="auth-error" hidden></p>
         <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;">Log in</button>
       </form>
-      <p style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;">7-day free trial, no credit card required.</p>
+      <p id="auth-trial-note" style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;" hidden>7 days free, then your card is charged automatically unless you cancel first. We'll email you before it's charged.</p>
       <p style="font-size:11.5px; color:var(--ink-soft); margin-top:10px; text-align:center;">By continuing, you agree to LandIt's <a href="/terms.html" target="_blank" style="color:inherit; text-decoration:underline;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:inherit; text-decoration:underline;">Privacy Policy</a>.</p>
     </div>
     <div id="auth-success-wrap" hidden>
@@ -2340,7 +2358,7 @@
         <div style="font-size:36px; margin-bottom:12px;">✉️</div>
         <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 10px;">Check your email</h3>
         <p style="font-size:14px; color:var(--ink-soft); line-height:1.6; margin:0 0 20px;">
-          We sent a confirmation link to <strong id="auth-success-email"></strong>. Click it to activate your account and start your free trial.
+          We sent a confirmation link to <strong id="auth-success-email"></strong>. Click it, then log back in here — we'll take you straight to entering your card to start your free trial.
         </p>
         <button type="button" class="btn btn-primary" style="width:100%;" onclick="closeAuthModal()">Got it</button>
         <a href="#" style="display:block; margin-top:14px; font-size:12.5px; color:var(--ink-soft);" onclick="event.preventDefault(); resendConfirmationEmail();" id="auth-resend-link">Didn't get it? Resend</a>
@@ -2440,13 +2458,20 @@
   function setAuthMode(mode){
     document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
     document.getElementById('auth-form').dataset.mode = mode;
-    document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? 'Create account' : 'Log in';
+    document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? 'Continue to payment' : 'Log in';
     document.getElementById('auth-error').hidden = true;
     const isSignup = mode === 'signup';
+    document.getElementById('auth-plan-field').hidden = !isSignup;
+    document.getElementById('auth-trial-note').hidden = !isSignup;
     document.getElementById('auth-confirm-field').hidden = !isSignup;
     document.getElementById('auth-password-confirm').required = isSignup;
     document.getElementById('auth-password-hint').hidden = !isSignup;
     document.getElementById('auth-password').autocomplete = isSignup ? 'new-password' : 'current-password';
+  }
+
+  function selectAuthPlan(plan){
+    document.getElementById('auth-plan').value = plan;
+    document.querySelectorAll('.plan-option').forEach(el => el.classList.toggle('selected', el.dataset.plan === plan));
   }
 
   // At least 8 characters with a letter and a number - stronger than
@@ -2488,7 +2513,13 @@
     btn.disabled = true;
     try {
       if (mode === 'signup'){
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        const plan = document.getElementById('auth-plan').value || 'yearly';
+        // pending_plan rides along on the Supabase user until Checkout
+        // actually happens - needed because if email confirmation is
+        // required, there's no session yet to start Checkout with, so it
+        // has to wait until they confirm and log in (see
+        // maybeResumePendingCheckout).
+        const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { pending_plan: plan } } });
         if (error) throw error;
         if (!data.session){
           // Email confirmation is required before a session is issued -
@@ -2498,7 +2529,8 @@
           document.getElementById('auth-form-wrap').hidden = true;
           document.getElementById('auth-success-wrap').hidden = false;
         } else {
-          closeAuthModal();
+          currentSession = data.session;
+          await startCheckout(plan, btn);
         }
       } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -2554,9 +2586,17 @@
       planEl.textContent = 'Canceled';
       billingBtn.hidden = !(currentProfile && currentProfile.stripe_customer_id);
       upgradeLink.hidden = false;
+    } else if (currentProfile && currentProfile.stripe_subscription_id){
+      // status === 'trialing' with a real Stripe subscription behind it -
+      // a card is on file and this trial will auto-convert to paid.
+      const daysLeft = trialDaysLeft(currentProfile.trial_started_at);
+      planEl.textContent = daysLeft > 0 ? `Free trial — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left (auto-renews)` : 'Trial ended';
+      billingBtn.hidden = false;
+      upgradeLink.hidden = true;
     } else {
-      const daysLeft = currentProfile ? trialDaysLeft(currentProfile.trial_started_at) : 0;
-      planEl.textContent = daysLeft > 0 ? `Free trial — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Trial ended';
+      // Signed up but never finished Checkout, so no card is on file and
+      // no trial has actually started yet.
+      planEl.textContent = 'Trial not started — add a card to begin';
       billingBtn.hidden = true;
       upgradeLink.hidden = false;
     }
@@ -2654,19 +2694,30 @@
   // The resume builder itself and the ATS score / keyword targeting stay
   // free for everyone - only these three require a logged-in account with
   // an active trial or paid subscription.
+  //
+  // The trial requires a card on file (collected via Stripe Checkout with
+  // a 7-day trial_period_days - see startCheckout()), so a 'trialing'
+  // profile only counts as active access once stripe_subscription_id is
+  // set - that's the proof Checkout actually completed, not just that the
+  // profile row's default status happens to say 'trialing'. Mirrors
+  // api/_lib/access.js's hasActiveAccess() server-side.
   function hasActiveAccess(){
     if (!supabaseReady || !currentSession || !currentProfile) return false;
     if (currentProfile.subscription_status === 'active') return true;
-    return trialDaysLeft(currentProfile.trial_started_at) > 0;
+    return currentProfile.subscription_status === 'trialing' && !!currentProfile.stripe_subscription_id;
   }
 
   function promptUpgrade(message){
     if (!currentSession){
-      alert(message + ' Start your free 7-day trial (no card needed) to continue.');
+      alert(message + ' Start your free 7-day trial to continue.');
       openAuthModal('signup');
       return;
     }
-    alert(message + ' Your trial has ended — choose a plan to keep going.');
+    if (currentProfile && currentProfile.subscription_status === 'trialing' && !currentProfile.stripe_subscription_id){
+      alert(message + " Add a card to start your free trial — you won't be charged until it ends.");
+    } else {
+      alert(message + ' Your trial has ended — choose a plan to keep going.');
+    }
     const pricing = document.getElementById('pricing');
     if (pricing) pricing.scrollIntoView({ behavior: 'smooth' });
   }
@@ -2898,9 +2949,11 @@
       openAuthModal('signup');
       return;
     }
-    const original = btn.textContent;
-    btn.textContent = 'Redirecting…';
-    btn.style.pointerEvents = 'none';
+    const original = btn ? btn.textContent : null;
+    if (btn){
+      btn.textContent = 'Redirecting…';
+      btn.style.pointerEvents = 'none';
+    }
     try {
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -2915,9 +2968,24 @@
       window.location.href = payload.url;
     } catch (err) {
       alert('Could not start checkout: ' + err.message);
-      btn.textContent = original;
-      btn.style.pointerEvents = '';
+      if (btn){
+        btn.textContent = original;
+        btn.style.pointerEvents = '';
+      }
     }
+  }
+
+  // If someone signed up, had to confirm their email before a session
+  // existed, and picked a plan at signup time (see handleAuthSubmit),
+  // pending_plan carries that choice on their Supabase user until we can
+  // actually start Checkout - which is now, the moment they have a real
+  // session. Runs on every sign-in, but only acts when there's a
+  // pending_plan AND Checkout hasn't already happened for them.
+  async function maybeResumePendingCheckout(session, profile){
+    const pendingPlan = session && session.user && session.user.user_metadata && session.user.user_metadata.pending_plan;
+    if (!pendingPlan || !profile || profile.stripe_subscription_id) return;
+    await supabaseClient.auth.updateUser({ data: { pending_plan: null } });
+    await startCheckout(pendingPlan, null);
   }
 
   function showCheckoutReturnBanner(){
@@ -2946,6 +3014,7 @@
         currentProfile = await loadProfile(session.user.id);
         renderNavAuth();
         await loadResumeFromDb(session.user.id);
+        await maybeResumePendingCheckout(session, currentProfile);
       } else {
         currentProfile = null;
       }
@@ -2959,6 +3028,7 @@
         currentProfile = await loadProfile(currentSession.user.id);
         renderNavAuth();
         await loadResumeFromDb(currentSession.user.id);
+        await maybeResumePendingCheckout(currentSession, currentProfile);
       }
     })();
   }
