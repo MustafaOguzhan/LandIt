@@ -93,6 +93,8 @@
   .btn-primary:hover{background:var(--forest-deep);}
   .btn-ghost{background:transparent; color:var(--ink); border-color:var(--line);}
   .btn-ghost:hover{border-color:var(--ink-soft);}
+  .btn-danger{background:var(--clay-tint); color:var(--clay);}
+  .btn-danger:hover{background:var(--clay); color:#fff;}
   .btn-sm{padding:8px 16px; font-size:13.5px;}
 
   /* ---------- Hero ---------- */
@@ -229,6 +231,7 @@
   .live-resume .lexp-sub{font-size:12.5px; color:var(--ink-soft); margin-top:1px; min-height:16px;}
 
   .field-divider{font-size:11.5px; font-weight:700; letter-spacing:.05em; color:var(--ink-soft); margin:22px 0 12px; padding-top:16px; border-top:1px solid var(--line);}
+  .field-hint{font-size:12px; color:var(--ink-soft); margin:6px 0 0;}
   .field-divider:first-of-type{border-top:none; padding-top:0;}
   .exp-entry{border:1px solid var(--line); border-radius:var(--radius-m); padding:16px; margin-bottom:12px; position:relative; background:var(--paper);}
   .exp-entry .remove-exp{position:absolute; top:12px; right:12px; background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600;}
@@ -2117,23 +2120,77 @@
 <div class="modal-overlay" id="auth-modal" hidden>
   <div class="modal-card">
     <button type="button" class="modal-close" onclick="closeAuthModal()" aria-label="Close">&times;</button>
-    <div class="modal-tabbar">
-      <button type="button" class="modal-tab active" data-mode="login" onclick="setAuthMode('login')">Log in</button>
-      <button type="button" class="modal-tab" data-mode="signup" onclick="setAuthMode('signup')">Sign up</button>
+    <div id="auth-form-wrap">
+      <div class="modal-tabbar">
+        <button type="button" class="modal-tab active" data-mode="login" onclick="setAuthMode('login')">Log in</button>
+        <button type="button" class="modal-tab" data-mode="signup" onclick="setAuthMode('signup')">Sign up</button>
+      </div>
+      <form id="auth-form" data-mode="login" onsubmit="handleAuthSubmit(event)" novalidate>
+        <div class="field">
+          <label for="auth-email">Email</label>
+          <input id="auth-email" type="email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <input id="auth-password" type="password" required minlength="8" autocomplete="current-password">
+          <p id="auth-password-hint" class="field-hint" hidden>At least 8 characters, with a letter and a number.</p>
+        </div>
+        <div class="field" id="auth-confirm-field" hidden>
+          <label for="auth-password-confirm">Confirm password</label>
+          <input id="auth-password-confirm" type="password" minlength="8" autocomplete="new-password">
+        </div>
+        <p class="auth-error" id="auth-error" hidden></p>
+        <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;">Log in</button>
+      </form>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;">7-day free trial, no credit card required.</p>
     </div>
-    <form id="auth-form" data-mode="login" onsubmit="handleAuthSubmit(event)">
-      <div class="field">
-        <label for="auth-email">Email</label>
-        <input id="auth-email" type="email" required autocomplete="email">
+    <div id="auth-success-wrap" hidden>
+      <div style="text-align:center;">
+        <div style="font-size:36px; margin-bottom:12px;">✉️</div>
+        <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 10px;">Check your email</h3>
+        <p style="font-size:14px; color:var(--ink-soft); line-height:1.6; margin:0 0 20px;">
+          We sent a confirmation link to <strong id="auth-success-email"></strong>. Click it to activate your account and start your free trial.
+        </p>
+        <button type="button" class="btn btn-primary" style="width:100%;" onclick="closeAuthModal()">Got it</button>
+        <a href="#" style="display:block; margin-top:14px; font-size:12.5px; color:var(--ink-soft);" onclick="event.preventDefault(); resendConfirmationEmail();" id="auth-resend-link">Didn't get it? Resend</a>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="account-modal" hidden>
+  <div class="modal-card">
+    <button type="button" class="modal-close" onclick="closeAccountModal()" aria-label="Close">&times;</button>
+    <h3 style="font-family:'Fraunces',serif; font-size:20px; margin:0 0 20px;">Account</h3>
+
+    <div class="field">
+      <label>Email</label>
+      <p id="account-email" style="font-size:14.5px; font-weight:600; margin:0;"></p>
+    </div>
+
+    <div class="field">
+      <label>Plan</label>
+      <p id="account-plan" style="font-size:14.5px; font-weight:600; margin:0;"></p>
+    </div>
+
+    <button type="button" class="btn btn-ghost" style="width:100%; margin-top:6px;" id="account-billing-btn" onclick="openBillingPortal()" hidden>Manage billing</button>
+    <a class="btn btn-ghost" style="width:100%; margin-top:6px; display:block; text-align:center;" id="account-upgrade-link" href="#pricing" onclick="closeAccountModal()" hidden>Choose a plan</a>
+
+    <div class="field-divider">CHANGE PASSWORD</div>
+    <form id="password-change-form" onsubmit="handlePasswordChange(event)" novalidate>
       <div class="field">
-        <label for="auth-password">Password</label>
-        <input id="auth-password" type="password" required minlength="6" autocomplete="current-password">
+        <label for="new-password">New password</label>
+        <input id="new-password" type="password" required minlength="8" autocomplete="new-password">
+        <p class="field-hint">At least 8 characters, with a letter and a number.</p>
       </div>
-      <p class="auth-error" id="auth-error" hidden></p>
-      <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;">Log in</button>
+      <p class="auth-error" id="password-change-error" hidden></p>
+      <p id="password-change-success" style="display:none; font-size:13px; color:var(--forest-deep); font-weight:600; margin:-4px 0 16px;">Password updated.</p>
+      <button type="submit" class="btn btn-ghost" style="width:100%;" id="password-change-btn">Update password</button>
     </form>
-    <p style="font-size:12.5px; color:var(--ink-soft); margin-top:16px; text-align:center;">7-day free trial, no credit card required.</p>
+
+    <div class="field-divider" style="color:var(--clay);">DANGER ZONE</div>
+    <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 12px;">Permanently deletes your account, resume data, and cancels any active subscription. This can't be undone.</p>
+    <button type="button" class="btn btn-danger" style="width:100%;" onclick="confirmDeleteAccount()" id="delete-account-btn">Delete account</button>
   </div>
 </div>
 
@@ -2174,6 +2231,8 @@
       alert('Accounts aren\'t configured on this deployment yet (missing Supabase URL/key).');
       return;
     }
+    document.getElementById('auth-form-wrap').hidden = false;
+    document.getElementById('auth-success-wrap').hidden = true;
     setAuthMode(mode || 'login');
     document.getElementById('auth-modal').hidden = false;
     document.getElementById('auth-email').focus();
@@ -2183,6 +2242,8 @@
     document.getElementById('auth-modal').hidden = true;
     document.getElementById('auth-error').hidden = true;
     document.getElementById('auth-form').reset();
+    document.getElementById('auth-form-wrap').hidden = false;
+    document.getElementById('auth-success-wrap').hidden = true;
   }
 
   function setAuthMode(mode){
@@ -2190,6 +2251,18 @@
     document.getElementById('auth-form').dataset.mode = mode;
     document.getElementById('auth-submit-btn').textContent = mode === 'signup' ? 'Create account' : 'Log in';
     document.getElementById('auth-error').hidden = true;
+    const isSignup = mode === 'signup';
+    document.getElementById('auth-confirm-field').hidden = !isSignup;
+    document.getElementById('auth-password-confirm').required = isSignup;
+    document.getElementById('auth-password-hint').hidden = !isSignup;
+    document.getElementById('auth-password').autocomplete = isSignup ? 'new-password' : 'current-password';
+  }
+
+  // At least 8 characters with a letter and a number - stronger than
+  // Supabase's own default (6 chars, no complexity check), enforced
+  // client-side so the person sees the problem before submitting.
+  function isPasswordStrongEnough(password){
+    return password.length >= 8 && /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
   }
 
   async function handleAuthSubmit(e){
@@ -2200,13 +2273,47 @@
     const errEl = document.getElementById('auth-error');
     const btn = document.getElementById('auth-submit-btn');
     errEl.hidden = true;
+
+    if (!email || !password){
+      errEl.textContent = 'Please enter your email and password.';
+      errEl.hidden = false;
+      return;
+    }
+
+    if (mode === 'signup'){
+      const confirm = document.getElementById('auth-password-confirm').value;
+      if (!isPasswordStrongEnough(password)){
+        errEl.textContent = 'Password must be at least 8 characters and include a letter and a number.';
+        errEl.hidden = false;
+        return;
+      }
+      if (password !== confirm){
+        errEl.textContent = 'Passwords don\'t match.';
+        errEl.hidden = false;
+        return;
+      }
+    }
+
     btn.disabled = true;
     try {
-      const { error } = mode === 'signup'
-        ? await supabaseClient.auth.signUp({ email, password })
-        : await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      closeAuthModal();
+      if (mode === 'signup'){
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session){
+          // Email confirmation is required before a session is issued -
+          // show a clear "check your email" state instead of silently
+          // resetting the form, which left people unsure anything happened.
+          document.getElementById('auth-success-email').textContent = email;
+          document.getElementById('auth-form-wrap').hidden = true;
+          document.getElementById('auth-success-wrap').hidden = false;
+        } else {
+          closeAuthModal();
+        }
+      } else {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeAuthModal();
+      }
     } catch (err) {
       errEl.textContent = err.message || 'Something went wrong. Please try again.';
       errEl.hidden = false;
@@ -2215,8 +2322,136 @@
     }
   }
 
+  async function resendConfirmationEmail(){
+    const email = document.getElementById('auth-success-email').textContent;
+    const link = document.getElementById('auth-resend-link');
+    if (!email) return;
+    link.textContent = 'Sending…';
+    try {
+      const { error } = await supabaseClient.auth.resend({ type: 'signup', email });
+      link.textContent = error ? 'Could not resend — try again' : 'Sent! Check your inbox';
+    } catch {
+      link.textContent = 'Could not resend — try again';
+    }
+  }
+
   async function handleLogout(){
     await supabaseClient.auth.signOut();
+    closeAccountModal();
+  }
+
+  // ---- Account panel: plan status, billing portal, password change, delete ----
+
+  function openAccountModal(){
+    if (!currentSession) return;
+    document.getElementById('account-email').textContent = currentSession.user.email;
+
+    const status = currentProfile ? currentProfile.subscription_status : null;
+    const billingBtn = document.getElementById('account-billing-btn');
+    const upgradeLink = document.getElementById('account-upgrade-link');
+    const planEl = document.getElementById('account-plan');
+
+    if (status === 'active'){
+      planEl.textContent = 'LandIt Pro (active)';
+      billingBtn.hidden = false;
+      upgradeLink.hidden = true;
+    } else if (status === 'past_due'){
+      planEl.textContent = 'Past due — update your payment method';
+      billingBtn.hidden = false;
+      upgradeLink.hidden = true;
+    } else if (status === 'canceled'){
+      planEl.textContent = 'Canceled';
+      billingBtn.hidden = !(currentProfile && currentProfile.stripe_customer_id);
+      upgradeLink.hidden = false;
+    } else {
+      const daysLeft = currentProfile ? trialDaysLeft(currentProfile.trial_started_at) : 0;
+      planEl.textContent = daysLeft > 0 ? `Free trial — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Trial ended';
+      billingBtn.hidden = true;
+      upgradeLink.hidden = false;
+    }
+
+    document.getElementById('password-change-form').reset();
+    document.getElementById('password-change-error').hidden = true;
+    document.getElementById('password-change-success').style.display = 'none';
+    document.getElementById('account-modal').hidden = false;
+  }
+
+  function closeAccountModal(){
+    document.getElementById('account-modal').hidden = true;
+  }
+
+  async function openBillingPortal(){
+    const btn = document.getElementById('account-billing-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Loading…';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/create-portal-session', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + currentSession.access_token },
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || ('Request failed (' + res.status + ')'));
+      window.location.href = payload.url;
+    } catch (err) {
+      alert('Could not open billing portal: ' + err.message);
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  }
+
+  async function handlePasswordChange(e){
+    e.preventDefault();
+    const newPassword = document.getElementById('new-password').value;
+    const errEl = document.getElementById('password-change-error');
+    const successEl = document.getElementById('password-change-success');
+    const btn = document.getElementById('password-change-btn');
+    errEl.hidden = true;
+    successEl.style.display = 'none';
+
+    if (!isPasswordStrongEnough(newPassword)){
+      errEl.textContent = 'Password must be at least 8 characters and include a letter and a number.';
+      errEl.hidden = false;
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      successEl.style.display = 'block';
+      document.getElementById('password-change-form').reset();
+    } catch (err) {
+      errEl.textContent = err.message || 'Could not update password.';
+      errEl.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function confirmDeleteAccount(){
+    if (!confirm('Delete your LandIt account? This permanently removes your resume data and cancels any active subscription. This cannot be undone.')) return;
+    if (!confirm('Are you sure? Type-and-confirm: this is your last chance to back out.')) return;
+
+    const btn = document.getElementById('delete-account-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Deleting…';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + currentSession.access_token },
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || ('Request failed (' + res.status + ')'));
+      closeAccountModal();
+      await supabaseClient.auth.signOut();
+      alert('Your account has been deleted.');
+    } catch (err) {
+      alert('Could not delete account: ' + err.message);
+      btn.textContent = original;
+      btn.disabled = false;
+    }
   }
 
   function trialDaysLeft(trialStartedAt){
@@ -2269,7 +2504,7 @@
 
     container.innerHTML = `
       ${badge}
-      <span style="font-size:13.5px; color:var(--ink-soft);">${escapeHtml(currentSession.user.email)}</span>
+      <a href="#" style="font-size:13.5px; color:var(--ink-soft); text-decoration:none; font-weight:600;" onclick="event.preventDefault(); openAccountModal();" title="Account settings">${escapeHtml(currentSession.user.email)}</a>
       <a class="btn btn-ghost btn-sm" href="#" onclick="event.preventDefault(); handleLogout();">Log out</a>
     `;
   }

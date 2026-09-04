@@ -62,6 +62,13 @@ Note: the 7-day free trial requires no credit card by design — it's tracked
 in Supabase (`profiles.trial_started_at`), not in Stripe. Stripe only gets
 involved once someone clicks "Continue to LandIt Pro" and actually subscribes.
 
+The Account panel's "Manage billing" button (`api/create-portal-session.js`)
+opens Stripe's hosted Customer Portal, where a subscriber can update their
+payment method, view invoices, and cancel — no extra setup beyond the
+`STRIPE_SECRET_KEY` above, but double-check **Settings → Billing → Customer
+portal** is turned on in the Stripe Dashboard (on by default for most
+accounts).
+
 ### Setting up Adzuna (real job search)
 
 1. Create a free account at [developer.adzuna.com](https://developer.adzuna.com).
