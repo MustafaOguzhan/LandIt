@@ -15,7 +15,15 @@ const MODEL = 'claude-sonnet-5';
 const MAX_TURNS = 12; // cap history so a single request can't balloon token usage
 const MAX_MESSAGE_CHARS = 3000;
 
-const SYSTEM_PROMPT = `You are an experienced, encouraging hiring-panel interviewer running a mock job interview for a candidate practicing on LandIt, a resume/interview prep product.
+// Keys must match the site's SUPPORTED_LANGS in landit.html.
+const LANGUAGE_NAMES = { en: 'English', tr: 'Turkish', de: 'German', no: 'Norwegian' };
+
+function buildSystemPrompt(lang) {
+  const languageName = LANGUAGE_NAMES[lang] || LANGUAGE_NAMES.en;
+  const languageLine = lang && lang !== 'en'
+    ? `\n\nWrite your question and your coaching tip in ${languageName} — the candidate is using LandIt in ${languageName}. Keep the JSON keys themselves in English exactly as shown below; only the "reply" and "tip" text values should be in ${languageName}.`
+    : '';
+  return `You are an experienced, encouraging hiring-panel interviewer running a mock job interview for a candidate practicing on LandIt, a resume/interview prep product.
 
 Context: your opening question, already shown to the candidate, was "Let's start with one from your resume. Tell me about a time you had to launch something under a tight deadline."
 
@@ -27,18 +35,24 @@ Rules for every reply:
   - structure: whether it has a clear situation/action/result shape
   - specificity: concrete details and numbers vs. vague claims
   - confidence: decisive language vs. hedging
-- Give one short, specific coaching tip tied to what they actually said.
+- Give one short, specific coaching tip tied to what they actually said.${languageLine}
 - Respond with ONLY a JSON object and nothing else — no markdown code fences, no commentary before or after — matching exactly this shape:
 {"reply": string, "scores": {"clarity": number, "structure": number, "specificity": number, "confidence": number}, "tip": string}`;
+}
 
-const FALLBACK_REPLY = "Sorry, I didn't quite catch that — could you tell me a bit more?";
+const FALLBACK_REPLIES = {
+  en: "Sorry, I didn't quite catch that — could you tell me a bit more?",
+  tr: 'Üzgünüm, tam anlayamadım — biraz daha anlatabilir misiniz?',
+  de: 'Entschuldigung, das habe ich nicht ganz verstanden — können Sie mir etwas mehr erzählen?',
+  no: 'Beklager, jeg fikk ikke helt med meg det — kan du fortelle litt mer?',
+};
 
 // Claude is instructed to reply with pure JSON, but models occasionally wrap
 // it in markdown fences or add a stray sentence before/after. This extracts
 // and validates the JSON object defensively so a parsing hiccup never leaks
 // raw/malformed model output (which the UI would show, and even speak aloud)
 // to the candidate — it always falls back to a safe, generic message instead.
-function parseInterviewReply(rawText) {
+function parseInterviewReply(rawText, lang) {
   const candidates = [];
   const trimmed = (rawText || '').trim();
 
@@ -81,7 +95,7 @@ function parseInterviewReply(rawText) {
     };
   }
 
-  return { reply: FALLBACK_REPLY, scores: null, tip: null };
+  return { reply: FALLBACK_REPLIES[lang] || FALLBACK_REPLIES.en, scores: null, tip: null };
 }
 
 module.exports = async (req, res) => {
@@ -103,6 +117,7 @@ module.exports = async (req, res) => {
     try { body = JSON.parse(body); } catch { body = null; }
   }
   const history = body && Array.isArray(body.history) ? body.history : null;
+  const lang = body && typeof body.lang === 'string' && LANGUAGE_NAMES[body.lang] ? body.lang : 'en';
 
   if (!history || history.length === 0) {
     res.status(400).json({ error: 'Missing conversation history' });
@@ -151,7 +166,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 600,
-        system: SYSTEM_PROMPT,
+        system: buildSystemPrompt(lang),
         messages,
       }),
     });
@@ -165,7 +180,7 @@ module.exports = async (req, res) => {
     const data = await upstream.json();
     const rawText = (data.content || []).map((block) => block.text || '').join('');
 
-    res.status(200).json(parseInterviewReply(rawText));
+    res.status(200).json(parseInterviewReply(rawText, lang));
   } catch (err) {
     res.status(500).json({ error: 'Interview request failed', detail: String(err) });
   }

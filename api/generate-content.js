@@ -15,6 +15,15 @@ const { requireActiveAccess } = require('./_lib/access');
 const MODEL = 'claude-sonnet-5';
 const MAX_FIELD_CHARS = 4000;
 
+// Keys must match the site's SUPPORTED_LANGS in landit.html.
+const LANGUAGE_NAMES = { en: 'English', tr: 'Turkish', de: 'German', no: 'Norwegian' };
+
+function languageInstruction(lang) {
+  if (!lang || lang === 'en') return '';
+  const languageName = LANGUAGE_NAMES[lang] || LANGUAGE_NAMES.en;
+  return `\n- Write the result in ${languageName} — the candidate is using LandIt in ${languageName}.`;
+}
+
 // Both prompts share one hard rule: never invent specific facts (metrics,
 // years of experience, employers, achievements) that aren't implied by
 // what the candidate actually provided. A fabricated "$2M in savings" that
@@ -104,10 +113,11 @@ module.exports = async (req, res) => {
     res.status(400).json({ error: 'Input is too long' });
     return;
   }
+  const lang = typeof body.lang === 'string' && LANGUAGE_NAMES[body.lang] ? body.lang : 'en';
 
   let system, userMessage, maxTokens;
   if (type === 'bullet') {
-    system = BULLET_SYSTEM_PROMPT;
+    system = BULLET_SYSTEM_PROMPT + languageInstruction(lang);
     userMessage = [
       `Job title: ${role}`,
       company ? `Company: ${company}` : '',
@@ -115,7 +125,7 @@ module.exports = async (req, res) => {
     ].filter(Boolean).join('\n');
     maxTokens = 500;
   } else {
-    system = SUMMARY_SYSTEM_PROMPT;
+    system = SUMMARY_SYSTEM_PROMPT + languageInstruction(lang);
     userMessage = [
       `Job title: ${role}`,
       context,

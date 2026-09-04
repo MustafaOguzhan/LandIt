@@ -22,6 +22,21 @@ The site itself (`landit.html`) is served at `/`. `/api/interview`,
 `/api/cron-trial-feedback` are small serverless functions that keep all
 secret keys on the server — none of them are ever exposed to the browser.
 
+### Languages
+
+The site is available in English, Turkish, German, and Norwegian —
+auto-detected from the visitor's browser, switchable anytime from the
+dropdown in the nav (their choice is then remembered). No setup needed;
+this doesn't use any environment variable. The AI mock interview and the
+"Improve with AI" writer reply/write in the visitor's chosen language too,
+via a `lang` field sent to `api/interview.js`/`api/generate-content.js`.
+To add another language: add its code to `SUPPORTED_LANGS` near the top of
+`landit.html`'s first `<script>` block, add a matching `<option>` to every
+`<select class="lang-select">`, add its translations to the `I18N` object
+right below `SUPPORTED_LANGS` (copy the `en` block's keys), and add it to
+`LANGUAGE_NAMES` in both `api/interview.js` and `api/generate-content.js`
+so the AI features pick it up too.
+
 ### Setting up Supabase (accounts + saved resumes)
 
 1. Create a project at [supabase.com](https://supabase.com) (free tier is fine).
