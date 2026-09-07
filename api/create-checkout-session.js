@@ -78,6 +78,35 @@ module.exports = async (req, res) => {
       await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id);
     }
 
+    // If this profile already has a live subscription (active, or still in
+    // its trial), switching plans must update that SAME subscription's
+    // price in place. Starting a brand-new Checkout Session here instead
+    // would create a second, separate subscription running alongside the
+    // first - nothing about a new Checkout Session cancels the old one, so
+    // that would silently double-bill the customer every period.
+    if (profile.stripe_subscription_id) {
+      let existingSubscription = null;
+      try {
+        existingSubscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      } catch (err) {
+        existingSubscription = null; // e.g. already deleted - fall through to a fresh Checkout below
+      }
+
+      if (existingSubscription && (existingSubscription.status === 'active' || existingSubscription.status === 'trialing')) {
+        const currentItem = existingSubscription.items.data[0];
+        if (currentItem.price.id === priceId) {
+          res.status(200).json({ samePlan: true });
+          return;
+        }
+        await stripe.subscriptions.update(existingSubscription.id, {
+          items: [{ id: currentItem.id, price: priceId }],
+          proration_behavior: 'create_prorations',
+        });
+        res.status(200).json({ planChanged: true });
+        return;
+      }
+    }
+
     const trialEligible = !profile.stripe_subscription_id;
     const origin = req.headers.origin || `https://${req.headers.host}`;
     const session = await stripe.checkout.sessions.create({
