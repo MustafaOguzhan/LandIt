@@ -54,10 +54,17 @@ so the AI features pick it up too.
      `schema.sql`, not on hiding them.
    - The **service_role key** (under the same page, keep this one secret) —
      add it as the `SUPABASE_SERVICE_ROLE_KEY` environment variable in Vercel.
-4. In **Authentication → Providers**, email/password sign-up is on by default
-   — no extra setup needed. (Optional: under **Authentication → Settings**,
-   you can turn off "Confirm email" for easier testing, or leave it on for
-   production.)
+4. In **Authentication → Sign In / Providers**, email/password sign-up is on
+   by default — no extra setup needed. (Optional while testing: turn off
+   "Confirm email" there so signups don't need a real inbox.)
+5. Before real users sign up, turn "Confirm email" back on **and** configure
+   custom SMTP (**Authentication → Emails → SMTP Settings**) — Supabase's
+   built-in email sending is rate-limited and meant for testing only. LandIt
+   already uses Resend elsewhere (churn-feedback emails), so the simplest
+   option is to reuse it: create a Resend API key scoped to your verified
+   sending domain, then fill in Supabase's SMTP Settings with host
+   `smtp.resend.com`, port `587`, username `resend`, password = that API
+   key, and a sender email on your verified domain (e.g. `hello@mail.yourdomain.com`).
 
 ### Setting up Stripe (the $13/mo or $89/yr subscription)
 
