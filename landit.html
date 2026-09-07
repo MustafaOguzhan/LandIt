@@ -5218,9 +5218,13 @@
     await startCheckout(pendingPlan, null);
   }
 
+  // Captured before showCheckoutReturnBanner() strips ?checkout= from the
+  // URL, so the post-checkout polling below still knows what just happened
+  // even though it runs asynchronously after that.
+  const pendingCheckoutOutcome = new URLSearchParams(window.location.search).get('checkout');
+
   function showCheckoutReturnBanner(){
-    const params = new URLSearchParams(window.location.search);
-    const outcome = params.get('checkout');
+    const outcome = pendingCheckoutOutcome;
     if (!outcome) return;
     const banner = document.getElementById('checkout-banner');
     if (outcome === 'success'){
@@ -5236,6 +5240,27 @@
     window.history.replaceState({}, '', window.location.pathname);
   }
 
+  // Stripe's webhook (which is what actually updates profiles.* in
+  // Supabase) fires asynchronously and can land a few seconds after the
+  // Checkout redirect brings someone back to the site - a single loadProfile
+  // right after redirect can easily run before it. Rather than leave the nav
+  // badge stuck on stale (pre-payment) status forever, as it did until this
+  // fix, keep re-checking for a while whenever we just came back from a
+  // successful checkout and the profile doesn't show active access yet.
+  async function pollForCheckoutUpdate(userId){
+    for (let i = 0; i < 10; i++){
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const fresh = await loadProfile(userId);
+      if (!fresh) continue;
+      currentProfile = fresh;
+      renderNavAuth();
+      if (fresh.subscription_status === 'active'
+        || (fresh.subscription_status === 'trialing' && fresh.stripe_subscription_id)){
+        return;
+      }
+    }
+  }
+
   if (supabaseReady){
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       currentSession = session;
@@ -5245,6 +5270,9 @@
         renderNavAuth();
         await loadResumeFromDb(session.user.id);
         await maybeResumePendingCheckout(session, currentProfile);
+        if (pendingCheckoutOutcome === 'success' && !hasActiveAccess()){
+          pollForCheckoutUpdate(session.user.id);
+        }
       } else {
         currentProfile = null;
       }
@@ -5259,6 +5287,9 @@
         renderNavAuth();
         await loadResumeFromDb(currentSession.user.id);
         await maybeResumePendingCheckout(currentSession, currentProfile);
+        if (pendingCheckoutOutcome === 'success' && !hasActiveAccess()){
+          pollForCheckoutUpdate(currentSession.user.id);
+        }
       }
     })();
   }
