@@ -49,10 +49,21 @@ module.exports = async (req, res) => {
   }
 
   try {
-    if (STRIPE_SECRET_KEY && profile?.stripe_subscription_id &&
-        (profile.subscription_status === 'active' || profile.subscription_status === 'past_due')) {
+    // Cancel whenever a subscription might still be running Stripe-side -
+    // 'trialing' included, not just 'active'/'past_due'. A trial that's
+    // still in progress hasn't been billed yet but WILL auto-charge the
+    // card when it ends; skipping cancellation here would leave that
+    // subscription alive with no Supabase profile left to warn or bill
+    // notify - a silent charge on a deleted account. Best-effort: if
+    // Stripe's side is already canceled/gone, don't let that block the
+    // account deletion itself.
+    if (STRIPE_SECRET_KEY && profile?.stripe_subscription_id && profile.subscription_status !== 'canceled') {
       const stripe = Stripe(STRIPE_SECRET_KEY);
-      await stripe.subscriptions.cancel(profile.stripe_subscription_id);
+      try {
+        await stripe.subscriptions.cancel(profile.stripe_subscription_id);
+      } catch (err) {
+        console.error('delete-account: could not cancel Stripe subscription', err.message);
+      }
     }
 
     const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
