@@ -66,11 +66,11 @@ so the AI features pick it up too.
    `smtp.resend.com`, port `587`, username `resend`, password = that API
    key, and a sender email on your verified domain (e.g. `hello@mail.yourdomain.com`).
 
-### Setting up Stripe (the $13/mo or $89/yr subscription)
+### Setting up Stripe (the $18/mo or $89/yr subscription)
 
 1. Create an account at [stripe.com](https://stripe.com).
 2. Go to **Product catalog → Add product**. Name it (e.g. "LandIt Pro"),
-   add a price: **Recurring, Monthly, $13**. Save, then on the product page
+   add a price: **Recurring, Monthly, $18**. Save, then on the product page
    click **Add another price**: **Recurring, Yearly, $89**.
 3. Copy both **Price IDs** (start with `price_...`) — set them as
    `STRIPE_PRICE_ID_MONTHLY` and `STRIPE_PRICE_ID_YEARLY` in Vercel.
