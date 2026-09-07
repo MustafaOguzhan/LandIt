@@ -5191,7 +5191,10 @@
         body: JSON.stringify({ plan }),
       });
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || t('checkout.failed', { status: res.status }));
+      if (!res.ok) {
+        const detail = payload.detail ? ' — ' + String(payload.detail).slice(0, 300) : '';
+        throw new Error((payload.error || t('checkout.failed', { status: res.status })) + detail);
+      }
       window.location.href = payload.url;
     } catch (err) {
       alert(t('checkout.startError', { message: err.message }));
