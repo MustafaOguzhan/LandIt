@@ -778,6 +778,8 @@
       "checkout.startError": "Could not start checkout: {message}",
       "checkout.success": "You're on LandIt Pro! It can take a few seconds for your account to update.",
       "checkout.canceled": "Checkout was canceled — no charge was made.",
+      "checkout.planChanged": "Your plan has been changed. It can take a few seconds for your account to update.",
+      "checkout.samePlan": "You're already on this plan.",
       "interview.voiceOff": "🔇 Voice off",
     },
     tr: {
@@ -1027,6 +1029,8 @@
       "checkout.startError": "Ödeme başlatılamadı: {message}",
       "checkout.success": "Artık LandIt Pro'dasınız! Hesabınızın güncellenmesi birkaç saniye sürebilir.",
       "checkout.canceled": "Ödeme iptal edildi — hiçbir ücret alınmadı.",
+      "checkout.planChanged": "Planınız değiştirildi. Hesabınızın güncellenmesi birkaç saniye sürebilir.",
+      "checkout.samePlan": "Zaten bu plandasınız.",
       "interview.voiceOff": "🔇 Ses kapalı",
     },
     de: {
@@ -1276,6 +1280,8 @@
       "checkout.startError": "Checkout konnte nicht gestartet werden: {message}",
       "checkout.success": "Sie sind jetzt bei LandIt Pro! Es kann ein paar Sekunden dauern, bis Ihr Konto aktualisiert wird.",
       "checkout.canceled": "Checkout wurde abgebrochen — es wurde keine Zahlung vorgenommen.",
+      "checkout.planChanged": "Ihr Plan wurde geändert. Es kann ein paar Sekunden dauern, bis Ihr Konto aktualisiert wird.",
+      "checkout.samePlan": "Sie nutzen diesen Plan bereits.",
       "interview.voiceOff": "🔇 Sprachausgabe aus",
     },
     no: {
@@ -1525,6 +1531,8 @@
       "checkout.startError": "Kunne ikke starte utsjekk: {message}",
       "checkout.success": "Du er nå på LandIt Pro! Det kan ta noen sekunder før kontoen din oppdateres.",
       "checkout.canceled": "Utsjekk ble kansellert — ingen belastning ble gjort.",
+      "checkout.planChanged": "Planen din er endret. Det kan ta noen sekunder før kontoen din oppdateres.",
+      "checkout.samePlan": "Du er allerede på denne planen.",
       "interview.voiceOff": "🔇 Lyd av",
     },
     es: {
@@ -1774,6 +1782,8 @@
       "checkout.startError": "No se pudo iniciar el pago: {message}",
       "checkout.success": "¡Ya tienes LandIt Pro! Puede tardar unos segundos en actualizarse tu cuenta.",
       "checkout.canceled": "El pago fue cancelado — no se realizó ningún cargo.",
+      "checkout.planChanged": "Tu plan ha cambiado. Puede tardar unos segundos en actualizarse tu cuenta.",
+      "checkout.samePlan": "Ya tienes este plan.",
       "interview.voiceOff": "🔇 Voz desactivada",
     },
     fr: {
@@ -2023,6 +2033,8 @@
       "checkout.startError": "Impossible de démarrer le paiement : {message}",
       "checkout.success": "Vous êtes maintenant sur LandIt Pro ! La mise à jour de votre compte peut prendre quelques secondes.",
       "checkout.canceled": "Le paiement a été annulé — aucun frais n'a été prélevé.",
+      "checkout.planChanged": "Votre forfait a été modifié. La mise à jour de votre compte peut prendre quelques secondes.",
+      "checkout.samePlan": "Vous êtes déjà sur ce forfait.",
       "interview.voiceOff": "🔇 Voix désactivée",
     },
     pt: {
@@ -2272,6 +2284,8 @@
       "checkout.startError": "Não foi possível iniciar o pagamento: {message}",
       "checkout.success": "Você já é LandIt Pro! Pode levar alguns segundos para sua conta atualizar.",
       "checkout.canceled": "O pagamento foi cancelado — nenhuma cobrança foi feita.",
+      "checkout.planChanged": "Seu plano foi alterado. Pode levar alguns segundos para sua conta atualizar.",
+      "checkout.samePlan": "Você já está neste plano.",
       "interview.voiceOff": "🔇 Voz desativada",
     },
     it: {
@@ -2521,6 +2535,8 @@
       "checkout.startError": "Impossibile avviare il pagamento: {message}",
       "checkout.success": "Ora sei su LandIt Pro! Potrebbero volerci alcuni secondi perché il tuo account si aggiorni.",
       "checkout.canceled": "Il pagamento è stato annullato — non è stato addebitato alcun importo.",
+      "checkout.planChanged": "Il tuo piano è stato modificato. Potrebbero volerci alcuni secondi perché il tuo account si aggiorni.",
+      "checkout.samePlan": "Sei già su questo piano.",
       "interview.voiceOff": "🔇 Voce disattivata",
     },
   };
@@ -5195,6 +5211,24 @@
         const detail = payload.detail ? ' — ' + String(payload.detail).slice(0, 300) : '';
         throw new Error((payload.error || t('checkout.failed', { status: res.status })) + detail);
       }
+      if (payload.samePlan){
+        alert(t('checkout.samePlan'));
+        if (btn){
+          btn.textContent = original;
+          btn.style.pointerEvents = '';
+        }
+        return;
+      }
+      if (payload.planChanged){
+        alert(t('checkout.planChanged'));
+        if (btn){
+          btn.textContent = original;
+          btn.style.pointerEvents = '';
+        }
+        currentProfile = await loadProfile(currentSession.user.id);
+        renderNavAuth();
+        return;
+      }
       window.location.href = payload.url;
     } catch (err) {
       alert(t('checkout.startError', { message: err.message }));
@@ -5218,9 +5252,13 @@
     await startCheckout(pendingPlan, null);
   }
 
+  // Captured before showCheckoutReturnBanner() strips ?checkout= from the
+  // URL, so the post-checkout polling below still knows what just happened
+  // even though it runs asynchronously after that.
+  const pendingCheckoutOutcome = new URLSearchParams(window.location.search).get('checkout');
+
   function showCheckoutReturnBanner(){
-    const params = new URLSearchParams(window.location.search);
-    const outcome = params.get('checkout');
+    const outcome = pendingCheckoutOutcome;
     if (!outcome) return;
     const banner = document.getElementById('checkout-banner');
     if (outcome === 'success'){
@@ -5236,6 +5274,27 @@
     window.history.replaceState({}, '', window.location.pathname);
   }
 
+  // Stripe's webhook (which is what actually updates profiles.* in
+  // Supabase) fires asynchronously and can land a few seconds after the
+  // Checkout redirect brings someone back to the site - a single loadProfile
+  // right after redirect can easily run before it. Rather than leave the nav
+  // badge stuck on stale (pre-payment) status forever, as it did until this
+  // fix, keep re-checking for a while whenever we just came back from a
+  // successful checkout and the profile doesn't show active access yet.
+  async function pollForCheckoutUpdate(userId){
+    for (let i = 0; i < 10; i++){
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const fresh = await loadProfile(userId);
+      if (!fresh) continue;
+      currentProfile = fresh;
+      renderNavAuth();
+      if (fresh.subscription_status === 'active'
+        || (fresh.subscription_status === 'trialing' && fresh.stripe_subscription_id)){
+        return;
+      }
+    }
+  }
+
   if (supabaseReady){
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       currentSession = session;
@@ -5245,6 +5304,9 @@
         renderNavAuth();
         await loadResumeFromDb(session.user.id);
         await maybeResumePendingCheckout(session, currentProfile);
+        if (pendingCheckoutOutcome === 'success' && !hasActiveAccess()){
+          pollForCheckoutUpdate(session.user.id);
+        }
       } else {
         currentProfile = null;
       }
@@ -5259,6 +5321,9 @@
         renderNavAuth();
         await loadResumeFromDb(currentSession.user.id);
         await maybeResumePendingCheckout(currentSession, currentProfile);
+        if (pendingCheckoutOutcome === 'success' && !hasActiveAccess()){
+          pollForCheckoutUpdate(currentSession.user.id);
+        }
       }
     })();
   }
