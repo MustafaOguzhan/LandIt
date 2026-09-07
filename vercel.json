@@ -2,15 +2,12 @@
   "crons": [
     { "path": "/api/cron-trial-feedback", "schedule": "0 9 * * *" }
   ],
+  "rewrites": [
+    { "source": "/", "destination": "/landit.html" }
+  ],
   "headers": [
     {
       "source": "/landit.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
       ]
