@@ -120,6 +120,22 @@
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
   @media (max-width:520px){.row2{grid-template-columns:1fr;}}
 
+  .upload-row{margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px;}
+  .upload-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; width:fit-content;
+    padding:11px 20px; border-radius:999px; font-weight:600; font-size:14px;
+    background:var(--forest-tint); color:var(--forest-deep); cursor:pointer;
+    transition:transform .15s ease, background .15s ease;
+  }
+  .upload-btn:hover{background:var(--forest); color:#fff;}
+  .upload-btn:active{transform:scale(0.97);}
+  .upload-btn:has(input:focus-visible){outline:2px solid var(--forest); outline-offset:2px;}
+  .upload-hint{font-size:12.5px; color:var(--ink-soft);}
+  .upload-status{font-size:13px; padding:10px 13px; border-radius:var(--radius-s); margin-bottom:16px;}
+  .upload-status.pending{background:var(--paper); color:var(--ink-soft);}
+  .upload-status.success{background:var(--forest-tint); color:var(--forest-deep);}
+  .upload-status.error{background:var(--clay-tint); color:var(--clay);}
+
   .exp-entry{border:1px solid var(--line); border-radius:var(--radius-m); padding:16px; margin-bottom:12px; position:relative; background:var(--paper);}
   .exp-entry .remove-exp{position:absolute; top:12px; right:12px; background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600;}
   .exp-entry .remove-exp:hover{color:var(--clay);}
@@ -193,6 +209,14 @@
       <div>
         <div class="card">
           <h3>Your resume</h3>
+          <div class="upload-row">
+            <label class="upload-btn" for="resume-file">
+              <span>📄 Upload a PDF or Word résumé to auto-fill</span>
+              <input id="resume-file" type="file" accept=".pdf,.docx" onchange="handleResumeFileUpload(this)" hidden>
+            </label>
+            <span class="upload-hint">Optional — read entirely in your browser, never uploaded anywhere. Or just fill in the fields below by hand.</span>
+          </div>
+          <div id="upload-status" class="upload-status" hidden></div>
           <div class="row2">
             <div class="field">
               <label for="in-name">Full name</label>
@@ -287,7 +311,169 @@
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  // ============================================================
+  // Resume file upload — extracts text from an uploaded PDF/DOCX
+  // entirely client-side (nothing leaves the browser), then makes a
+  // best-effort attempt to split it into the structured fields below.
+  // Real resumes vary too much for this to be perfect, so the result
+  // is always shown for the visitor to review/correct - never treated
+  // as final. Manually filling the fields in below always still works
+  // with no upload at all.
+  // ============================================================
+
+  async function extractPdfText(file){
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      let lastY = null;
+      let line = '';
+      content.items.forEach(item => {
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2){
+          text += line.trim() + '\n';
+          line = '';
+        }
+        line += item.str + ' ';
+        lastY = item.transform[5];
+      });
+      text += line.trim() + '\n';
+    }
+    return text;
+  }
+
+  async function extractDocxText(file){
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buf });
+    return result.value;
+  }
+
+  async function extractTextFromFile(file){
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return extractPdfText(file);
+    if (ext === 'docx') return extractDocxText(file);
+    throw new Error('Please upload a .pdf or .docx file.');
+  }
+
+  const SECTION_HEADERS = [
+    { key: 'summary', names: ['summary','professional summary','profile','objective','about','about me'] },
+    { key: 'experience', names: ['experience','work experience','professional experience','employment history','employment','work history','relevant experience'] },
+    { key: 'education', names: ['education','academic background','education & training','education and training'] },
+    { key: 'skills', names: ['skills','technical skills','core competencies','key skills','skills & tools','skills and tools'] },
+  ];
+
+  function detectHeader(line){
+    const norm = line.trim().toLowerCase().replace(/:$/, '');
+    for (const group of SECTION_HEADERS){
+      if (group.names.includes(norm)) return group.key;
+    }
+    return null;
+  }
+
+  function parseExperienceLines(lines){
+    const YEAR_OR_PRESENT = /\b(19|20)\d{2}\b|\bpresent\b/i;
+    const isBullet = (l) => /^[•\-*·▪]/.test(l);
+    const dateIdxs = [];
+    lines.forEach((l, i) => { if (!isBullet(l) && YEAR_OR_PRESENT.test(l)) dateIdxs.push(i); });
+
+    if (dateIdxs.length === 0){
+      if (lines.length === 0) return [];
+      const bullets = lines.filter(isBullet).map(l => l.replace(/^[•\-*·▪]\s*/, ''));
+      return [{ title: lines[0] || '', company: '', dates: '', bullets: bullets.length ? bullets : lines.slice(1) }];
+    }
+
+    const entries = [];
+    for (let e = 0; e < dateIdxs.length; e++){
+      const dateIdx = dateIdxs[e];
+      const heads = [];
+      let walk = dateIdx - 1;
+      while (walk >= 0 && heads.length < 2 && !isBullet(lines[walk]) && !YEAR_OR_PRESENT.test(lines[walk])){
+        heads.unshift(lines[walk]);
+        walk--;
+      }
+      const nextBoundary = e + 1 < dateIdxs.length ? dateIdxs[e + 1] : lines.length;
+      const bulletLines = [];
+      for (let i = dateIdx + 1; i < nextBoundary; i++){
+        if (!isBullet(lines[i]) && (nextBoundary - i) <= 2 && e + 1 < dateIdxs.length) continue; // likely the next entry's title/company
+        const cleaned = lines[i].replace(/^[•\-*·▪]\s*/, '').trim();
+        if (cleaned) bulletLines.push(cleaned);
+      }
+      entries.push({ title: heads[0] || '', company: heads[1] || '', dates: lines[dateIdx], bullets: bulletLines });
+    }
+    return entries;
+  }
+
+  function parseResumeText(raw){
+    const lines = raw.split('\n').map(l => l.trim());
+    const boundaries = [];
+    lines.forEach((line, i) => { if (line){ const key = detectHeader(line); if (key) boundaries.push({ key, index: i }); } });
+
+    const result = { name: '', role: '', contact: '', summary: '', edu: '', skills: [], entries: [] };
+    const headerEnd = boundaries.length ? boundaries[0].index : Math.min(lines.length, 6);
+    const headerLines = lines.slice(0, headerEnd).filter(Boolean);
+
+    result.name = headerLines[0] || '';
+    const contactLine = headerLines.find(l => /@/.test(l) || /\d{3}[\s.-]?\d{3}[\s.-]?\d{4}/.test(l));
+    if (contactLine) result.contact = contactLine;
+    const roleLine = headerLines.find((l, idx) => idx > 0 && l !== contactLine && l.length < 60);
+    if (roleLine) result.role = roleLine;
+
+    for (let b = 0; b < boundaries.length; b++){
+      const { key, index } = boundaries[b];
+      const end = b + 1 < boundaries.length ? boundaries[b + 1].index : lines.length;
+      const sectionLines = lines.slice(index + 1, end).filter(Boolean);
+      if (key === 'summary') result.summary = sectionLines.join(' ');
+      else if (key === 'education') result.edu = sectionLines.join(', ');
+      else if (key === 'skills') result.skills = sectionLines.join(', ').split(/,|;/).map(s => s.trim()).filter(Boolean);
+      else if (key === 'experience') result.entries = parseExperienceLines(sectionLines);
+    }
+    return result;
+  }
+
+  function setUploadStatus(text, kind){
+    const el = document.getElementById('upload-status');
+    el.textContent = text;
+    el.className = 'upload-status ' + kind;
+    el.hidden = false;
+  }
+
+  async function handleResumeFileUpload(input){
+    const file = input.files[0];
+    if (!file) return;
+    setUploadStatus('Reading your file…', 'pending');
+    try {
+      const text = await extractTextFromFile(file);
+      const parsed = parseResumeText(text);
+
+      document.getElementById('in-name').value = parsed.name;
+      document.getElementById('in-role').value = parsed.role;
+      document.getElementById('in-contact').value = parsed.contact;
+      document.getElementById('in-summary').value = parsed.summary;
+      document.getElementById('in-edu').value = parsed.edu;
+      document.getElementById('in-skills').value = parsed.skills.join(', ');
+
+      document.getElementById('exp-list').innerHTML = '';
+      if (parsed.entries.length){
+        parsed.entries.forEach(e => addExperience(e));
+      } else {
+        addExperience();
+      }
+
+      setUploadStatus('✓ Auto-filled from your file — resume parsing isn\'t perfect, so please double-check every field below (especially Experience) before relying on the score.', 'success');
+      scheduleUpdate();
+    } catch (err) {
+      setUploadStatus('Couldn\'t read that file — try a different file, or just fill in the fields below by hand. (' + err.message + ')', 'error');
+    }
+  }
+
   // ============================================================
   // Scoring engine — this mirrors the ATS Score logic in landit.html
   // (STRONG_VERBS through updateAnalysis in the main file's <script>
