@@ -682,6 +682,7 @@
       "footer.terms": "Terms of Service",
       "footer.contact": "Contact",
       "footer.atsChecker": "Free ATS Checker",
+      "footer.templates": "Free Templates",
       "footer.rights": "© LandIt. All rights reserved.",
       "score.level.strong": "Strong",
       "score.level.good": "Good",
@@ -935,6 +936,7 @@
       "footer.terms": "Kullanım Şartları",
       "footer.contact": "İletişim",
       "footer.atsChecker": "Ücretsiz ATS Kontrolü",
+      "footer.templates": "Ücretsiz Şablonlar",
       "footer.rights": "© LandIt. Tüm hakları saklıdır.",
       "score.level.strong": "Güçlü",
       "score.level.good": "İyi",
@@ -1188,6 +1190,7 @@
       "footer.terms": "Nutzungsbedingungen",
       "footer.contact": "Kontakt",
       "footer.atsChecker": "Kostenloser ATS-Check",
+      "footer.templates": "Kostenlose Vorlagen",
       "footer.rights": "© LandIt. Alle Rechte vorbehalten.",
       "score.level.strong": "Stark",
       "score.level.good": "Gut",
@@ -1441,6 +1444,7 @@
       "footer.terms": "Vilkår for bruk",
       "footer.contact": "Kontakt",
       "footer.atsChecker": "Gratis ATS-sjekk",
+      "footer.templates": "Gratis maler",
       "footer.rights": "© LandIt. Alle rettigheter reservert.",
       "score.level.strong": "Sterk",
       "score.level.good": "God",
@@ -1694,6 +1698,7 @@
       "footer.terms": "Términos de servicio",
       "footer.contact": "Contacto",
       "footer.atsChecker": "Verificador ATS gratis",
+      "footer.templates": "Plantillas gratis",
       "footer.rights": "© LandIt. Todos los derechos reservados.",
       "score.level.strong": "Fuerte",
       "score.level.good": "Bueno",
@@ -1947,6 +1952,7 @@
       "footer.terms": "Conditions d'utilisation",
       "footer.contact": "Contact",
       "footer.atsChecker": "Vérificateur ATS gratuit",
+      "footer.templates": "Modèles gratuits",
       "footer.rights": "© LandIt. Tous droits réservés.",
       "score.level.strong": "Excellent",
       "score.level.good": "Bon",
@@ -2200,6 +2206,7 @@
       "footer.terms": "Termos de serviço",
       "footer.contact": "Contato",
       "footer.atsChecker": "Verificador ATS gratuito",
+      "footer.templates": "Modelos gratuitos",
       "footer.rights": "© LandIt. Todos os direitos reservados.",
       "score.level.strong": "Forte",
       "score.level.good": "Bom",
@@ -2453,6 +2460,7 @@
       "footer.terms": "Termini di servizio",
       "footer.contact": "Contatti",
       "footer.atsChecker": "Controllo ATS gratuito",
+      "footer.templates": "Modelli gratuiti",
       "footer.rights": "© LandIt. Tutti i diritti riservati.",
       "score.level.strong": "Forte",
       "score.level.good": "Buono",
@@ -3191,6 +3199,7 @@
         <a href="#jobs" data-i18n="nav.link.jobs">Job Search</a>
         <a href="#pricing" data-i18n="nav.link.pricing">Pricing</a>
         <a href="/ats-checker.html" data-i18n="footer.atsChecker">Free ATS Checker</a>
+        <a href="/templates.html" data-i18n="footer.templates">Free Templates</a>
         <a href="/privacy.html" data-i18n="footer.privacy">Privacy Policy</a>
         <a href="/terms.html" data-i18n="footer.terms">Terms of Service</a>
         <a href="mailto:ornungen@gmail.com" data-i18n="footer.contact">Contact</a>
@@ -5369,6 +5378,19 @@
   }
 
   showCheckoutReturnBanner();
+
+  // Lets an external link (e.g. the Free Resume Templates page) pick a
+  // specific template and land straight on the builder with it applied,
+  // instead of everyone always arriving at the Clearline default.
+  (function applyTemplateFromQuery(){
+    const VALID_TEMPLATES = ['clearline', 'fieldwork', 'groundwork', 'runway'];
+    const requested = new URLSearchParams(window.location.search).get('template');
+    if (!requested || !VALID_TEMPLATES.includes(requested)) return;
+    selectTemplate(requested);
+    window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+    const builder = document.getElementById('builder');
+    if (builder) builder.scrollIntoView({ behavior: 'smooth' });
+  })();
 </script>
 
 </body>
