@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Free ATS Resume Checker — Instant Score | LandIt</title>
+<meta name="description" content="Paste your resume details and get an instant ATS compatibility score, keyword match against any job description, and specific fixes — 100% free, no signup required.">
+<link rel="canonical" href="https://landitai.com/ats-checker.html">
+<meta name="theme-color" content="#FAF7F2">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LandIt">
+<meta property="og:title" content="Free ATS Resume Checker — Instant Score">
+<meta property="og:description" content="See exactly how applicant tracking software reads your resume — content, impact, keywords, and formatting, scored instantly. No signup required.">
+<meta property="og:image" content="https://landitai.com/og-image-ats.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://landitai.com/ats-checker.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Free ATS Resume Checker — Instant Score">
+<meta name="twitter:description" content="See exactly how applicant tracking software reads your resume — content, impact, keywords, and formatting, scored instantly. No signup required.">
+<meta name="twitter:image" content="https://landitai.com/og-image-ats.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%23FAF7F2'/%3E%3Cpath d='M3 19C7 13 12 6 22 4' stroke='%231F9E5E' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='0.5 4.5' fill='none'/%3E%3Cpath d='M22 4L17 5.5M22 4L20.5 9' stroke='%231F9E5E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='3' cy='19' r='3' fill='%23F5A623'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "LandIt Free ATS Resume Checker",
+  "url": "https://landitai.com/ats-checker.html",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "description": "Instantly score a resume for ATS compatibility across content, impact, keywords, and formatting, with a keyword match against a pasted job description.",
+  "offers": { "@type": "Offer", "price": "0.00", "priceCurrency": "USD" }
+}
+</script>
+<style>
+  :root{
+    --ink: #1B2430;
+    --ink-soft: #4C5A6B;
+    --paper: #FAF7F2;
+    --paper-raised: #FFFFFF;
+    --line: #E4DED2;
+    --forest: #1F9E5E;
+    --forest-deep: #147A47;
+    --forest-tint: #DFF7EA;
+    --amber: #F5A623;
+    --amber-tint: #FDEBC8;
+    --clay: #E85A3B;
+    --clay-tint: #FCE0D6;
+    --plum: #9B4FC2;
+    --plum-tint: #F3E4FA;
+    --teal: #17A2B8;
+    --teal-tint: #D9F3F7;
+    --radius-s: 6px;
+    --radius-m: 10px;
+    --radius-l: 20px;
+    --shadow: 0 1px 2px rgba(27,36,48,0.06), 0 8px 24px rgba(27,36,48,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; padding:0;}
+  [hidden]{display:none !important;}
+  body{background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Fraunces',serif; font-weight:600; color:var(--ink); letter-spacing:-0.01em; margin:0;}
+  p{margin:0;}
+  a{color:inherit;}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 32px;}
+  @media (max-width:640px){.wrap{padding:0 20px;}}
+
+  header{position:sticky; top:0; z-index:50; background:rgba(250,247,242,0.9); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);}
+  .nav{display:flex; align-items:center; justify-content:space-between; padding:16px 0;}
+  .logo{display:flex; align-items:center; gap:10px; font-family:'Fraunces',serif; font-weight:600; font-size:20px; text-decoration:none; color:var(--ink);}
+  .back-link{font-size:14px; font-weight:600; color:var(--ink-soft); text-decoration:none; transition:color .15s;}
+  .back-link:hover{color:var(--ink);}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:11px 22px; border-radius:999px; font-weight:600; font-size:15px;
+    border:1px solid transparent; cursor:pointer; text-decoration:none;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    font-family:'Inter',sans-serif;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn:focus-visible{outline:2px solid var(--forest); outline-offset:2px;}
+  .btn-primary{background:var(--forest); color:#fff;}
+  .btn-primary:hover{background:var(--forest-deep);}
+  .btn-ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  .btn-ghost:hover{border-color:var(--ink-soft);}
+  .btn-sm{padding:8px 16px; font-size:13.5px;}
+
+  main{padding:0 0 96px;}
+  .hero{padding:56px 0 40px;}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    color:var(--forest-deep); background:var(--forest-tint);
+    padding:6px 14px; border-radius:999px; font-size:13.5px; font-weight:600;
+    margin-bottom:18px;
+  }
+  .hero h1{font-size:44px; line-height:1.1; max-width:16ch;}
+  @media (max-width:640px){.hero h1{font-size:32px;}}
+  .hero-sub{margin-top:16px; font-size:17.5px; color:var(--ink-soft); max-width:640px;}
+  .hero-note{margin-top:14px; font-size:13.5px; color:var(--ink-soft); display:flex; align-items:center; gap:8px;}
+  .hero-note::before{content:"✓"; color:var(--forest); font-weight:700;}
+
+  .layout{display:grid; grid-template-columns:1fr 420px; gap:36px; align-items:start; margin-top:8px;}
+  @media (max-width:980px){.layout{grid-template-columns:1fr;}}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-l); padding:28px; box-shadow:var(--shadow);}
+  .card + .card{margin-top:20px;}
+  .card h3{font-size:16px; margin-bottom:16px;}
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block; font-size:13px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
+  .field input, .field textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:var(--radius-s);
+    font-family:'Inter',sans-serif; font-size:14.5px; color:var(--ink); background:var(--paper);
+  }
+  .field textarea{resize:vertical; min-height:76px;}
+  .field input:focus, .field textarea:focus{outline:2px solid var(--ink-soft); outline-offset:1px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:520px){.row2{grid-template-columns:1fr;}}
+
+  .exp-entry{border:1px solid var(--line); border-radius:var(--radius-m); padding:16px; margin-bottom:12px; position:relative; background:var(--paper);}
+  .exp-entry .remove-exp{position:absolute; top:12px; right:12px; background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600;}
+  .exp-entry .remove-exp:hover{color:var(--clay);}
+  .add-exp{background:none; border:1px dashed var(--line); border-radius:var(--radius-m); padding:11px; width:100%; font-weight:600; font-size:13.5px; color:var(--ink-soft); cursor:pointer; transition:border-color .15s ease, color .15s ease;}
+  .add-exp:hover{border-color:var(--forest); color:var(--forest-deep);}
+
+  /* ---- Live score panel (mirrors landit.html's ATS Score section) ---- */
+  .score-panel{position:sticky; top:88px;}
+  @media (max-width:980px){.score-panel{position:static; margin-top:8px;}}
+  .ring-wrap{position:relative; width:168px; height:168px; margin:0 auto;}
+  .ring-num{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .ring-num .n{font-family:'Fraunces',serif; font-size:38px; font-weight:600;}
+  .ring-num .l{font-size:12px; color:var(--ink-soft); font-weight:600;}
+  .breakdown{display:flex; flex-direction:column; gap:14px; margin-top:22px;}
+  .bd-row{display:grid; grid-template-columns:88px 1fr 36px; align-items:center; gap:12px;}
+  .bd-row .lbl{font-size:13px; font-weight:600;}
+  .bar-track{height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--forest); border-radius:4px; transition:width .5s ease;}
+  .bd-row .pct{font-size:12.5px; font-weight:700; color:var(--ink-soft); text-align:right;}
+  .suggestions-list{display:flex; flex-direction:column; gap:10px; margin-top:16px;}
+  .suggestion-row{display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.5; color:var(--ink);}
+  .suggestion-tag{flex:0 0 auto; margin-top:6px; width:7px; height:7px; border-radius:50%;}
+  .suggestions-empty{font-size:13px; color:var(--ink-soft); font-style:italic;}
+  .kw-chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px;}
+  .chip{padding:5px 11px; border-radius:999px; font-size:12.5px; font-weight:600;}
+  .chip.matched{background:var(--forest-tint); color:var(--forest-deep);}
+  .chip.missing{background:var(--amber-tint); color:#8A5A16;}
+  .kw-empty{font-size:12.5px; color:var(--ink-soft); font-style:italic;}
+  .divider{border-top:1px solid var(--line); margin:20px 0;}
+
+  /* ---- CTA band ---- */
+  .cta-band{background:var(--ink); border-radius:var(--radius-l); padding:52px 40px; text-align:center; margin-top:72px;}
+  .cta-band h2{color:#fff; font-size:28px; max-width:26ch; margin:0 auto;}
+  .cta-band p{color:#B8C0CC; font-size:15.5px; margin-top:12px; max-width:46ch; margin-left:auto; margin-right:auto;}
+  .cta-band .btn{margin-top:24px;}
+
+  footer{padding:32px 0 48px; border-top:1px solid var(--line); margin-top:20px;}
+  footer .wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; font-size:13px; color:var(--ink-soft);}
+  footer a{color:var(--ink-soft); text-decoration:none;}
+  footer a:hover{color:var(--ink);}
+
+  @media (prefers-reduced-motion: reduce){ * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="/">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <path d="M3 19C7 13 12 6 22 4" stroke="#1F9E5E" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.5 4.5"/>
+        <path d="M22 4L17 5.5M22 4L20.5 9" stroke="#1F9E5E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="3" cy="19" r="3" fill="#F5A623"/>
+      </svg>
+      LandIt
+    </a>
+    <a class="btn btn-primary btn-sm" href="https://landitai.com/#pricing">Start free trial</a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="hero">
+      <div class="eyebrow">Free Tool · No Signup Required</div>
+      <h1>Free ATS Resume Checker</h1>
+      <p class="hero-sub">Applicant tracking software filters most resumes before a person ever reads them. Fill in your details below and see your score update instantly — content, impact, keywords, and formatting, scored the same way.</p>
+      <p class="hero-note">Nothing you type here is saved or sent anywhere — it's scored entirely in your browser.</p>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="card">
+          <h3>Your resume</h3>
+          <div class="row2">
+            <div class="field">
+              <label for="in-name">Full name</label>
+              <input id="in-name" type="text" placeholder="Alicia Moreno">
+            </div>
+            <div class="field">
+              <label for="in-role">Target role</label>
+              <input id="in-role" type="text" placeholder="Product Marketing Manager">
+            </div>
+          </div>
+          <div class="field">
+            <label for="in-contact">Contact line</label>
+            <input id="in-contact" type="text" placeholder="alicia@email.com · Seattle, WA · linkedin.com/in/alicia">
+          </div>
+          <div class="field">
+            <label for="in-summary">Professional summary</label>
+            <textarea id="in-summary" placeholder="A 2-3 sentence summary of your experience and what you're looking for next."></textarea>
+          </div>
+          <div class="field">
+            <label for="in-edu">Education</label>
+            <input id="in-edu" type="text" placeholder="B.A. Marketing, University of Washington">
+          </div>
+          <div class="field">
+            <label for="in-skills">Skills (comma-separated)</label>
+            <input id="in-skills" type="text" placeholder="Go-to-market strategy, SQL, A/B testing, Positioning">
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Experience</h3>
+          <div id="exp-list"></div>
+          <button type="button" class="add-exp" onclick="addExperience()">+ Add another experience</button>
+        </div>
+
+        <div class="card">
+          <h3>Job description <span style="font-weight:400; color:var(--ink-soft);">(optional, for keyword match)</span></h3>
+          <div class="field">
+            <textarea id="jd" style="min-height:100px" placeholder="Paste a job description to see matched and missing keywords…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="score-panel">
+        <div class="card">
+          <div class="ring-wrap">
+            <svg width="168" height="168" viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="86" fill="none" stroke="#E4DED2" stroke-width="14"/>
+              <circle class="score-ring" id="main-ring" cx="100" cy="100" r="86" fill="none" stroke="#1F9E5E" stroke-width="14"
+                stroke-linecap="round" stroke-dasharray="540" stroke-dashoffset="540"
+                transform="rotate(-90 100 100)"/>
+            </svg>
+            <div class="ring-num">
+              <span class="n" id="main-ring-num">0</span>
+              <span class="l" id="main-ring-label">—</span>
+            </div>
+          </div>
+          <div class="breakdown">
+            <div class="bd-row"><span class="lbl">Content</span><div class="bar-track"><div class="bar-fill" id="score-content-bar" style="width:0%; background:var(--forest);"></div></div><span class="pct" id="score-content-pct">0%</span></div>
+            <div class="bd-row"><span class="lbl">Impact</span><div class="bar-track"><div class="bar-fill" id="score-impact-bar" style="width:0%; background:var(--teal);"></div></div><span class="pct" id="score-impact-pct">0%</span></div>
+            <div class="bd-row"><span class="lbl">Keywords</span><div class="bar-track"><div class="bar-fill" id="score-keywords-bar" style="width:0%; background:var(--amber);"></div></div><span class="pct" id="score-keywords-pct">0%</span></div>
+            <div class="bd-row"><span class="lbl">Formatting</span><div class="bar-track"><div class="bar-fill" id="score-formatting-bar" style="width:0%; background:var(--plum);"></div></div><span class="pct" id="score-formatting-pct">0%</span></div>
+          </div>
+
+          <div class="divider"></div>
+          <h3 style="margin-bottom:4px;">Quick wins</h3>
+          <div id="score-suggestions" class="suggestions-list"></div>
+
+          <div class="divider"></div>
+          <h3 style="margin-bottom:4px;">Keyword match</h3>
+          <div class="kw-chips" id="kw-chips"><span class="kw-empty">Paste a job description above to compare.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-band">
+      <h2>Like what you see?</h2>
+      <p>LandIt turns this into a polished, AI-tailored resume — plus unlimited keyword targeting, a real AI mock interview, and job search. Free for 7 days.</p>
+      <a class="btn btn-primary" href="https://landitai.com/#pricing">Start your free trial</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© LandIt. All rights reserved.</div>
+    <div style="display:flex; gap:20px;">
+      <a href="/">Home</a>
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="mailto:ornungen@gmail.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ============================================================
+  // Scoring engine — this mirrors the ATS Score logic in landit.html
+  // (STRONG_VERBS through updateAnalysis in the main file's <script>
+  // block). Kept as a separate copy rather than a shared module so this
+  // standalone page never risks the main product's live scoring path;
+  // if the scoring weights/logic change in landit.html, mirror the
+  // change here too.
+  // ============================================================
+
+  const STRONG_VERBS = new Set(['led','built','launched','increased','reduced','managed','designed',
+    'created','developed','implemented','improved','delivered','drove','grew','scaled','negotiated',
+    'streamlined','automated','optimized','achieved','generated','spearheaded','established','executed',
+    'coordinated','directed','initiated','transformed','accelerated','architected','pioneered','resolved',
+    'trained','mentored','presented','analyzed','redesigned','launched','saved','cut','boosted','expanded',
+    'oversaw','restructured','secured','won','exceeded','doubled','tripled']);
+
+  const KEYWORD_STOPWORDS = new Set(['a','an','the','and','or','but','if','then','so','of','to','in',
+    'on','for','with','at','by','from','as','is','are','was','were','be','been','being','this','that',
+    'these','those','it','its','you','your','we','our','they','their','he','she','his','her','will',
+    'would','can','could','should','must','shall','may','might','not','no','do','does','did','have',
+    'has','had','i','me','my','us','who','whom','which','what','when','where','why','how','job','role',
+    'position','company','team','years','year','experience','looking','seeking','candidate','candidates',
+    'ideal','strong','excellent','ability','skills','including','etc',
+    'opportunity','opportunities','vacancy','vacancies','apply','application','applications','applicant',
+    'applicants','hire','hiring','join','joining','opening','openings',
+    'environment','culture','diverse','diversity','inclusive','inclusion','equal','employer','employment',
+    'benefits','package','competitive','salary','equity','compensation','pto','leave','parental','remote',
+    'hybrid','onsite','flexible','perks','office','offices',
+    'passionate','passion','dynamic','innovative','innovation','collaborate','collaborative',
+    'collaboration','communication','communicate','proficiency','proficient','familiarity','familiar',
+    'preferred','requirements','requirement','responsibilities','responsible','responsibility','duties',
+    'qualifications','qualified','plus','bonus','mentor','mentoring','growth','career','development',
+    'professional','fast','paced',
+    'work','working','help','helping','build','building','create','creating','ensure','ensuring',
+    'provide','providing','across','within','into','more','most','other','others','well','also','such',
+    'per','any','all','some','each','every','make','making','take','taking','get','getting','new',
+    'talented','growing','closely','fellow','participate','similar','offer','offers','offering',
+    'comprehensive','health','dental','vision','generous','celebrate','committed','employees','proud',
+    'solutions','customers','issues','teams']);
+
+  function scoreContent(r){
+    let score = 0;
+    if (r.name) score += 5;
+    if (r.role) score += 5;
+    if (r.contact) score += 5;
+    if (r.summary){
+      score += 10;
+      if (r.summary.length >= 40 && r.summary.length <= 500) score += 5;
+    }
+    if (r.entries.length > 0){
+      score += 10;
+      const withCompany = r.entries.filter(e => e.company).length;
+      const withDates = r.entries.filter(e => e.start || e.end).length;
+      const withBullets = r.entries.filter(e => e.bullets.length > 0).length;
+      score += (withCompany / r.entries.length) * 5;
+      score += (withDates / r.entries.length) * 5;
+      score += (withBullets / r.entries.length) * 15;
+    }
+    if (r.edu) score += 10;
+    score += Math.min(r.skills.length, 6) / 6 * 10;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  function scoreImpact(r){
+    const bullets = r.entries.flatMap(e => e.bullets);
+    if (bullets.length === 0) return 15;
+    let total = 0;
+    bullets.forEach(b => {
+      const firstWord = (b.match(/[a-zA-Z']+/) || [''])[0].toLowerCase();
+      const hasVerb = STRONG_VERBS.has(firstWord);
+      const hasMetric = /\d/.test(b);
+      total += (hasVerb ? 50 : 0) + (hasMetric ? 50 : 0);
+    });
+    return Math.round(total / bullets.length);
+  }
+
+  function scoreFormatting(r){
+    let score = 100;
+    if (!r.edu) score -= 12;
+    if (r.skills.length === 0) score -= 12;
+    if (r.summary && r.summary.length < 20) score -= 8;
+    if (r.summary && r.summary.length > 600) score -= 8;
+    if (r.contact && !r.contact.includes('@')) score -= 10;
+    const allBullets = r.entries.flatMap(e => e.bullets);
+    const longBullets = allBullets.filter(b => b.length > 260).length;
+    score -= Math.min(longBullets * 6, 18);
+    const hasStrayChars = allBullets.some(b => /[•\t]/.test(b));
+    if (hasStrayChars) score -= 10;
+    if (r.entries.length === 0) score -= 15;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  function cleanWord(w){ return w.toLowerCase().replace(/[^a-z0-9-]/g, ''); }
+
+  function extractKeywords(jdText){
+    if (!jdText) return [];
+    const normalized = jdText.replace(/\n+/g, '. ');
+    const rawChunks = normalized.split(/,|;|\.|(?:\s+and\s+)|(?:\s+or\s+)|(?:\s+with\s+)/i);
+    const seen = new Map();
+    rawChunks.forEach(chunk => {
+      let words = chunk.trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) return;
+      if (words.length > 4) words = words.slice(-4);
+      while (words.length && KEYWORD_STOPWORDS.has(cleanWord(words[words.length - 1]))) words.pop();
+      while (words.length && KEYWORD_STOPWORDS.has(cleanWord(words[0]))) words.shift();
+      if (words.length === 0) return;
+      const phrase = words.join(' ').replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+      const key = phrase.toLowerCase();
+      if (phrase.length < 2 || phrase.length > 40 || KEYWORD_STOPWORDS.has(key)) return;
+      if (!seen.has(key)) seen.set(key, phrase);
+    });
+    return Array.from(seen.values()).slice(0, 10);
+  }
+
+  function escapeRegex(str){ return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  function keywordAppears(keyword, haystackLower){
+    const pattern = new RegExp('\\b' + escapeRegex(keyword.toLowerCase()) + '\\b', 'i');
+    return pattern.test(haystackLower);
+  }
+
+  function computeKeywordMatch(jdText, resumeText){
+    const keywords = extractKeywords(jdText);
+    const haystack = resumeText.toLowerCase();
+    const matched = [];
+    const missing = [];
+    keywords.forEach(kw => {
+      if (keywordAppears(kw, haystack)) matched.push(kw);
+      else missing.push(kw);
+    });
+    const score = keywords.length ? Math.round((matched.length / keywords.length) * 100) : null;
+    return { matched, missing, score };
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function scoreColor(score){
+    const hue = (score / 100) * 145;
+    return `hsl(${hue}, 72%, 42%)`;
+  }
+  function scoreLabel(score){
+    if (score >= 80) return 'Strong';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Needs work';
+    return 'Weak';
+  }
+
+  const CIRCUMFERENCE = 540;
+  const ringAnimTokens = new WeakMap();
+  function animateRing(ringEl, numEl, labelEl, target, duration){
+    duration = duration || 900;
+    const token = {};
+    ringAnimTokens.set(ringEl, token);
+    const start = performance.now();
+    function frame(now){
+      if (ringAnimTokens.get(ringEl) !== token) return;
+      const tt = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - tt, 3);
+      const value = eased * target;
+      const offset = CIRCUMFERENCE - (CIRCUMFERENCE * value / 100);
+      ringEl.setAttribute('stroke-dashoffset', offset);
+      ringEl.setAttribute('stroke', scoreColor(value));
+      if (numEl) numEl.textContent = Math.round(value);
+      if (labelEl) labelEl.textContent = scoreLabel(value);
+      if (tt < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function setBar(prefix, value){
+    const bar = document.getElementById(prefix + '-bar');
+    const pct = document.getElementById(prefix + '-pct');
+    if (bar) bar.style.width = value + '%';
+    if (pct) pct.textContent = value + '%';
+  }
+
+  function renderKeywordChips(matched, missing){
+    const container = document.getElementById('kw-chips');
+    if (matched.length === 0 && missing.length === 0){
+      container.innerHTML = '<span class="kw-empty">Paste a job description above to compare.</span>';
+      return;
+    }
+    const chips = [
+      ...matched.map(kw => `<span class="chip matched">✓ ${escapeHtml(kw)}</span>`),
+      ...missing.map(kw => `<span class="chip missing">+ ${escapeHtml(kw)}</span>`),
+    ];
+    container.innerHTML = chips.join('');
+  }
+
+  function generateSuggestions(resume, keywordInfo){
+    const contentTips = [];
+    const impactTips = [];
+    const keywordTips = [];
+    const formattingTips = [];
+    const addContent = (text) => contentTips.push({ text, color: 'var(--forest)' });
+    const addImpact = (text) => impactTips.push({ text, color: 'var(--teal)' });
+    const addKeyword = (text) => keywordTips.push({ text, color: 'var(--amber)' });
+    const addFormatting = (text) => formattingTips.push({ text, color: 'var(--plum)' });
+
+    if (!resume.name) addContent('Add your full name.');
+    if (!resume.role) addContent('Add the role you\'re targeting.');
+    if (!resume.contact) addContent('Add a contact line — email, location, and/or LinkedIn.');
+    else if (!resume.contact.includes('@')) addFormatting('Include an email address in your contact line.');
+
+    if (!resume.summary) addContent('Add a short professional summary.');
+    else if (resume.summary.length < 40) addContent('Expand your summary — aim for 2-3 full sentences.');
+    else if (resume.summary.length > 600) addFormatting('Trim your summary — keep it under ~600 characters.');
+
+    const allBullets = resume.entries.flatMap(e => e.bullets);
+    if (resume.entries.length === 0){
+      addContent('Add at least one experience entry.');
+    } else {
+      const withoutBullets = resume.entries.filter(e => e.bullets.length === 0).length;
+      if (withoutBullets) addContent(`Add bullet points to ${withoutBullets} experience ${withoutBullets === 1 ? 'entry' : 'entries'}.`);
+      const weakBullets = allBullets.filter(b => {
+        const firstWord = (b.match(/[a-zA-Z']+/) || [''])[0].toLowerCase();
+        return !STRONG_VERBS.has(firstWord);
+      }).length;
+      if (weakBullets) addImpact(`Start ${weakBullets} bullet${weakBullets === 1 ? '' : 's'} with a strong action verb (Led, Built, Increased…).`);
+      const noMetric = allBullets.filter(b => !/\d/.test(b)).length;
+      if (noMetric) addImpact(`Add a number/metric to ${noMetric} bullet${noMetric === 1 ? '' : 's'} — impact reads stronger with a result attached.`);
+    }
+
+    if (!resume.edu) addContent('Add your education.');
+    if (resume.skills.length < 6) addContent(`Add more skills — you have ${resume.skills.length}, aim for 6+.`);
+
+    if (keywordInfo.score !== null && keywordInfo.missing.length){
+      addKeyword(`Missing from your resume: ${keywordInfo.missing.slice(0, 5).join(', ')}.`);
+    } else if (keywordInfo.score === null){
+      addKeyword('Paste a job description to see missing keywords.');
+    }
+
+    const longBullets = allBullets.filter(b => b.length > 260).length;
+    if (longBullets) addFormatting(`Shorten ${longBullets} bullet${longBullets === 1 ? '' : 's'} — keep each under ~260 characters.`);
+    const hasStrayChars = allBullets.some(b => /[•\t]/.test(b));
+    if (hasStrayChars) addFormatting('Remove stray bullet characters or tabs pasted into your bullet text.');
+
+    return [...contentTips, ...impactTips, ...keywordTips, ...formattingTips].slice(0, 6);
+  }
+
+  function renderSuggestions(tips){
+    const container = document.getElementById('score-suggestions');
+    if (tips.length === 0){
+      container.innerHTML = '<div class="suggestions-empty">No quick wins left — nice work.</div>';
+      return;
+    }
+    container.innerHTML = tips.map(tip => `
+      <div class="suggestion-row">
+        <span class="suggestion-tag" style="background:${tip.color};"></span>
+        <span>${escapeHtml(tip.text)}</span>
+      </div>
+    `).join('');
+  }
+
+  // ============================================================
+  // Simplified resume input (structured fields, same shape the
+  // scoring functions above expect) + experience entry repeater.
+  // ============================================================
+
+  let expCounter = 0;
+  function addExperience(prefill){
+    prefill = prefill || {};
+    const id = 'exp-' + (++expCounter);
+    const wrap = document.createElement('div');
+    wrap.className = 'exp-entry';
+    wrap.dataset.id = id;
+    wrap.innerHTML = `
+      <button type="button" class="remove-exp" onclick="removeExperience('${id}')" aria-label="Remove">✕ Remove</button>
+      <div class="row2">
+        <div class="field"><label>Job title</label><input class="exp-title" type="text" placeholder="Product Marketing Manager" value="${escapeHtml(prefill.title || '')}"></div>
+        <div class="field"><label>Company</label><input class="exp-company" type="text" placeholder="Acme Inc." value="${escapeHtml(prefill.company || '')}"></div>
+      </div>
+      <div class="field"><label>Dates</label><input class="exp-dates" type="text" placeholder="Jan 2022 – Present" value="${escapeHtml(prefill.dates || '')}"></div>
+      <div class="field" style="margin-bottom:0;"><label>Bullet points (one per line)</label><textarea class="exp-bullets" placeholder="Led go-to-market strategy for 3 product launches, increasing qualified pipeline 40%">${escapeHtml((prefill.bullets || []).join('\n'))}</textarea></div>
+    `;
+    document.getElementById('exp-list').appendChild(wrap);
+    wrap.querySelectorAll('input, textarea').forEach(el => el.addEventListener('input', scheduleUpdate));
+  }
+
+  function removeExperience(id){
+    const el = document.querySelector(`.exp-entry[data-id="${id}"]`);
+    if (el) el.remove();
+    scheduleUpdate();
+  }
+
+  function getResumeSnapshot(){
+    const val = (id) => document.getElementById(id).value.trim();
+    const entries = Array.from(document.querySelectorAll('.exp-entry')).map(entry => ({
+      title: entry.querySelector('.exp-title').value.trim(),
+      company: entry.querySelector('.exp-company').value.trim(),
+      start: entry.querySelector('.exp-dates').value.trim(),
+      end: '',
+      bullets: entry.querySelector('.exp-bullets').value.trim().split('\n').map(l => l.trim()).filter(Boolean),
+    }));
+    return {
+      name: val('in-name'),
+      role: val('in-role'),
+      contact: val('in-contact'),
+      summary: val('in-summary'),
+      edu: val('in-edu'),
+      skills: val('in-skills').split(',').map(s => s.trim()).filter(Boolean),
+      entries,
+    };
+  }
+
+  function resumeFullText(r){
+    return [r.name, r.role, r.summary, r.edu, r.skills.join(' '),
+      ...r.entries.flatMap(e => [e.title, e.company, ...e.bullets])].join(' \n ');
+  }
+
+  const mainRing = document.getElementById('main-ring');
+  const mainNum = document.getElementById('main-ring-num');
+  const mainLabel = document.getElementById('main-ring-label');
+
+  function update(){
+    const resume = getResumeSnapshot();
+    const resumeText = resumeFullText(resume);
+    const jdText = document.getElementById('jd').value.trim();
+
+    const content = scoreContent(resume);
+    const impact = scoreImpact(resume);
+    const formatting = scoreFormatting(resume);
+    const { matched, missing, score: keywordScore } = computeKeywordMatch(jdText, resumeText);
+
+    const overall = keywordScore === null
+      ? Math.round(content * 0.45 + impact * 0.35 + formatting * 0.20)
+      : Math.round(content * 0.35 + impact * 0.25 + keywordScore * 0.25 + formatting * 0.15);
+
+    setBar('score-content', content);
+    setBar('score-impact', impact);
+    setBar('score-keywords', keywordScore === null ? 0 : keywordScore);
+    setBar('score-formatting', formatting);
+
+    animateRing(mainRing, mainNum, mainLabel, overall);
+    renderKeywordChips(matched, missing);
+    renderSuggestions(generateSuggestions(resume, { matched, missing, score: keywordScore }));
+  }
+
+  let updateDebounce = null;
+  function scheduleUpdate(){
+    clearTimeout(updateDebounce);
+    updateDebounce = setTimeout(update, 250);
+  }
+
+  document.querySelectorAll('#in-name, #in-role, #in-contact, #in-summary, #in-edu, #in-skills, #jd')
+    .forEach(el => el.addEventListener('input', scheduleUpdate));
+
+  addExperience();
+  update();
+</script>
+
+</body>
+</html>
