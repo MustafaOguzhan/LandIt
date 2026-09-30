@@ -1,9 +1,8 @@
 // Vücut açıklığı analizi: kişiyi bul -> vücut noktalarından kol/gövde/bacak bölgeleri çıkar ->
 // her bölgede ten renkli piksel oranını ölç. Sınıflandırıcıdan (NSFWJS) bağımsız, tamamlayıcı sinyal.
-import { Human } from '../node_modules/@vladmandic/human/dist/human.esm-nobundle.js';
+import { Human } from '../node_modules/@vladmandic/human/dist/human.esm.js';
 
 const MIN_KP = 0.3;       // vücut noktası güven eşiği
-const MALE_SCORE = 0.85;  // bu güvenle erkek yüzü bulunan kişiler sayılmaz
 
 let humanPromise = null;
 export function getHuman(backend) {
@@ -33,6 +32,7 @@ export function getHuman(backend) {
         object: { enabled: true, modelPath: 'centernet.json', minConfidence: 0.3, maxDetected: 8 },
       });
       await human.load();
+      await human.warmup();
       return human;
     })();
     humanPromise.catch(() => { humanPromise = null; });
@@ -86,7 +86,7 @@ function analyzePerson(res, cv) {
 
   const face = res.face && res.face[0];
   const ref = faceSkinRef(face, px, W, H);
-  const isMale = !!(face && face.gender === 'male' && (face.genderScore || 0) >= MALE_SCORE);
+  const isMale = false; // Human'ın cinsiyet çıktısı bu görsellerde güvenilir değil (erkeğe 'female' dedi); kullanılmıyor
 
   const isSkin = (x, y) => {
     const xi = Math.round(x), yi = Math.round(y);
@@ -170,7 +170,7 @@ export async function bodyExposure(img, backend) {
   const W = img.naturalWidth, H = img.naturalHeight;
   const full = toCanvas(img, 0, 0, W, H, 448);
 
-  const detObj = await human.detect(full, { body: { enabled: false }, face: { enabled: false } });
+  const detObj = await human.detect(full, { object: { enabled: true }, body: { enabled: false }, face: { enabled: false } });
   let persons = (detObj.object || [])
     .filter((o) => o.label === 'person' && o.score >= 0.35)
     .map((o) => ({ box: o.box, area: o.box[2] * o.box[3] }))
@@ -188,13 +188,11 @@ export async function bodyExposure(img, backend) {
     crops.push(toCanvas(full, sx, sy, sw, sh, 448));
   }
 
-  const out = { persons: persons.length, exposure: 0, torso: 0, arms: 0, legs: 0, detail: [] };
+  const out = { persons: persons.length, exposure: 0, torso: 0, arms: 0, legs: 0 };
   for (const cv of crops) {
-    const res = await human.detect(cv, { object: { enabled: false } });
-    out.dbg = (out.dbg || []).concat([{ err: res.error || null, be: human.tf.getBackend(), ld: JSON.stringify(human.models.loaded ? human.models.loaded() : null).slice(0, 200), w: cv.width, h: cv.height, bodies: (res.body || []).length, faces: (res.face || []).length, kp: (res.body && res.body[0]) ? res.body[0].keypoints.map((k) => (k.part || k.name) + ':' + k.score.toFixed(2)).join(' ') : '' }]);
+    const res = await human.detect(cv, { object: { enabled: false }, body: { enabled: true }, face: { enabled: true } });
     const a = analyzePerson(res, cv);
     if (!a) continue;
-    out.detail.push(a);
     if (a.male) continue;
     out.exposure = Math.max(out.exposure, a.exposure);
     out.torso = Math.max(out.torso, a.torso);

@@ -4,14 +4,14 @@
   if (window.__safeviewLoaded) return;
   window.__safeviewLoaded = true;
 
-  // Sınıflandırıcı çıktısı çoğunlukla uçlarda (çok emin / hiç emin değil) olduğu için eski
-  // %25-%65 eşikleri neredeyse aynı görselleri seçiyordu. Şimdi gerçekten farklı profiller:
-  //  risk     = en riskli parçanın Porn+Sexy+Hentai olasılığı
-  //  skin     = ten tonlu piksel oranı; skinRisk ile birlikte değerlendirilir
+  // Üç ayrı sinyal, herhangi biri eşiği aşarsa gizlenir:
+  //  risk     = NSFW sınıflandırıcısı (en riskli parçanın Porn+Sexy+Hentai olasılığı)
+  //  exposure = kişinin kol/gövde/bacak bölgelerinin ağırlıklı açık ten oranı (vücut analizi)
+  //  torso    = yalnızca gövde (göbek/göğüs/sırt açıklığı)
   const PROFILES = {
-    high:   { risk: 0.03, skin: 0.35, skinRisk: 0.008 },
-    medium: { risk: 0.15, skin: 0.55, skinRisk: 0.04 },
-    low:    { risk: 0.50, skin: 2,    skinRisk: 1 },   // ten sinyali kapalı
+    high:   { risk: 0.03, exposure: 0.15, torso: 0.25 }, // kolsuz/şort gibi günlük açıklıkları da gizler
+    medium: { risk: 0.15, exposure: 0.28, torso: 0.40 },
+    low:    { risk: 0.50, exposure: 0.50, torso: 0.65 }, // yalnızca belirgin açıklık
   };
   const MIN_SIZE = 64;          // bundan küçük görseller (ikon, logo) taranmaz
   const VIDEO_INTERVAL_MS = 600;
@@ -26,7 +26,7 @@
   const badEls = new Set();
   const unverifiedEls = new Set();
 
-  const isBad = (r) => r.maxRisk >= profile.risk || (r.skin >= profile.skin && r.maxRisk >= profile.skinRisk);
+  const isBad = (r) => r.maxRisk >= profile.risk || (r.exposure || 0) >= profile.exposure || (r.torso || 0) >= profile.torso;
 
   // Her elementin son sınıflandırma sonucu; ayar değişince yeniden karar verebilmek için.
   const results = new WeakMap();

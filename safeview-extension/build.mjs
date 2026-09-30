@@ -6,10 +6,10 @@ rmSync('dist', { recursive: true, force: true });
 mkdirSync('dist', { recursive: true });
 const empty = resolve('src/empty-module.js');
 await build({
-  entryPoints: ['src/offscreen.js'],
+  entryPoints: { offscreen: 'src/offscreen.js', 'human-frame': 'src/human-frame.js' },
   bundle: true,
   format: 'iife',
-  outfile: 'dist/offscreen.js',
+  outdir: 'dist',
   minify: true,
   define: { global: 'globalThis' },
   inject: ['src/buffer-shim.js'],
@@ -19,7 +19,7 @@ await build({
   },
   logLevel: 'info',
 });
-for (const f of ['manifest.json', 'background.js', 'content.js', 'content.css', 'offscreen.html', 'popup.html', 'popup.js', 'popup.css']) {
+for (const f of ['manifest.json', 'background.js', 'content.js', 'content.css', 'offscreen.html', 'human-frame.html', 'popup.html', 'popup.js', 'popup.css']) {
   cpSync(`src/${f}`, `dist/${f}`);
 }
 cpSync('icons', 'dist/icons', { recursive: true });

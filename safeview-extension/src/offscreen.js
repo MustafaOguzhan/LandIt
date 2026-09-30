@@ -1,7 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import { load } from 'nsfwjs/core';
 import { MobileNetV2MidModel } from 'nsfwjs/models/mobilenet_v2_mid';
-import { bodyExposure } from './body.js';
 
 // Model dosyaları paketin içinde; hiçbir ağ çağrısı yok.
 const status = { state: 'loading', backend: null, error: null };
@@ -42,6 +41,42 @@ function loadImage(src) {
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('image decode failed'));
     img.src = src;
+  });
+}
+
+// ---- vücut analizi çerçevesi ----
+const BODY_BACKEND = 'cpu'; // deneme: 'cpu' | 'webgl'
+let frameReady = null;
+const pending = new Map();
+let seq = 0;
+function getFrame() {
+  if (!frameReady) {
+    frameReady = new Promise((resolve) => {
+      const f = document.createElement('iframe');
+      f.src = `human-frame.html?backend=${BODY_BACKEND}`;
+      f.style.display = 'none';
+      window.addEventListener('message', (ev) => {
+        const m = ev.data;
+        if (!m) return;
+        if (m.type === 'body-ready') resolve(f);
+        else if (m.type === 'body-result' && pending.has(m.id)) {
+          const { res, rej, timer } = pending.get(m.id);
+          pending.delete(m.id); clearTimeout(timer);
+          m.error ? rej(new Error(m.error)) : res(m.result);
+        }
+      });
+      document.body.appendChild(f);
+    });
+  }
+  return frameReady;
+}
+async function bodyViaFrame(dataUrl) {
+  const frame = await getFrame();
+  return new Promise((res, rej) => {
+    const id = ++seq;
+    const timer = setTimeout(() => { pending.delete(id); rej(new Error('body analysis timeout')); }, 45000);
+    pending.set(id, { res, rej, timer });
+    frame.contentWindow.postMessage({ type: 'body', id, dataUrl }, '*');
   });
 }
 
@@ -95,6 +130,7 @@ function skinRatio(img) {
 
 let chain = Promise.resolve();
 async function classify(dataUrl, fast) {
+  const t0 = performance.now();
   const [model, img] = await Promise.all([getModel(), loadImage(dataUrl)]);
   let maxRisk = 0, fullRisk = 0;
   const tiles = tilesFor(img, fast);
@@ -109,9 +145,10 @@ async function classify(dataUrl, fast) {
   const result = { maxRisk, fullRisk, skin: skinRatio(img) };
   // Vücut açıklığı analizi (yavaşsa/başarısızsa yalnızca NSFW sinyaliyle devam et)
   if (!fast) {
-    try { Object.assign(result, await bodyExposure(img, status.backend || 'webgl')); }
+    try { Object.assign(result, await bodyViaFrame(dataUrl)); }
     catch (e) { console.warn('SafeView: body analysis failed', e); result.bodyError = String((e && e.message) || e); }
   }
+  result.ms = Math.round(performance.now() - t0);
   return result;
 }
 
