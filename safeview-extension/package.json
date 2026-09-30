@@ -1,0 +1,17 @@
+{
+  "name": "safeview-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Blurs images/videos that an on-device classifier flags as explicit or revealing.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "buffer": "^6.0.3",
+    "nsfwjs": "^4.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

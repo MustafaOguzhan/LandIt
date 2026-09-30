@@ -1,0 +1,13 @@
+/* Güvenli varsayılan: doğrulanana kadar her görsel bulanık. Sadece sınıflandırıcı
+   "güvenli" dediğinde data-sv-ok eklenir ve bulanıklık kalkar. */
+html:not(.sv-off) img:not([data-sv-ok]),
+html:not(.sv-off) video:not([data-sv-ok]),
+html:not(.sv-off) picture:not([data-sv-ok]) > img,
+html:not(.sv-off) svg image:not([data-sv-ok]),
+html:not(.sv-off) [data-sv-bg]:not([data-sv-ok]) {
+  filter: blur(32px) !important;
+  clip-path: inset(0) !important;
+}
+html:not(.sv-off) [data-sv-bg]:not([data-sv-ok]) {
+  overflow: hidden !important;
+}
