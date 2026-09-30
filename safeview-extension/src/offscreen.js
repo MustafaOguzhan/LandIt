@@ -1,6 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
 import { load } from 'nsfwjs/core';
 import { MobileNetV2MidModel } from 'nsfwjs/models/mobilenet_v2_mid';
+import { bodyExposure } from './body.js';
 
 // Model dosyaları paketin içinde; hiçbir ağ çağrısı yok.
 const status = { state: 'loading', backend: null, error: null };
@@ -105,7 +106,13 @@ async function classify(dataUrl, fast) {
     if (i === 0) fullRisk = r;
     if (r > maxRisk) maxRisk = r;
   }
-  return { maxRisk, fullRisk, skin: skinRatio(img) };
+  const result = { maxRisk, fullRisk, skin: skinRatio(img) };
+  // Vücut açıklığı analizi (yavaşsa/başarısızsa yalnızca NSFW sinyaliyle devam et)
+  if (!fast) {
+    try { Object.assign(result, await bodyExposure(img, status.backend || 'webgl')); }
+    catch (e) { console.warn('SafeView: body analysis failed', e); result.bodyError = String((e && e.message) || e); }
+  }
+  return result;
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
+    "@vladmandic/human": "^3.3.6",
     "buffer": "^6.0.3",
     "nsfwjs": "^4.3.0"
   },
