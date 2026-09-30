@@ -4,13 +4,21 @@
   if (window.__safeviewLoaded) return;
   window.__safeviewLoaded = true;
 
-  const THRESHOLDS = { high: 0.25, medium: 0.45, low: 0.65 };
+  // Sınıflandırıcı çıktısı çoğunlukla uçlarda (çok emin / hiç emin değil) olduğu için eski
+  // %25-%65 eşikleri neredeyse aynı görselleri seçiyordu. Şimdi gerçekten farklı profiller:
+  //  risk     = en riskli parçanın Porn+Sexy+Hentai olasılığı
+  //  skin     = ten tonlu piksel oranı; skinRisk ile birlikte değerlendirilir
+  const PROFILES = {
+    high:   { risk: 0.03, skin: 0.35, skinRisk: 0.008 },
+    medium: { risk: 0.15, skin: 0.55, skinRisk: 0.04 },
+    low:    { risk: 0.50, skin: 2,    skinRisk: 1 },   // ten sinyali kapalı
+  };
   const MIN_SIZE = 64;          // bundan küçük görseller (ikon, logo) taranmaz
   const VIDEO_INTERVAL_MS = 600;
   const CONCURRENCY = 4;
 
   let enabled = true;
-  let threshold = THRESHOLDS.high;
+  let profile = PROFILES.high;
   let showUnverified = false; // doğrulanamayan görseller: false = bulanık kal
 
   const urlResults = new Map(); // url -> risk (0..1)
@@ -18,7 +26,24 @@
   const badEls = new Set();
   const unverifiedEls = new Set();
 
-  const riskOf = (s) => (s.Porn || 0) + (s.Hentai || 0) + (s.Sexy || 0);
+  const isBad = (r) => r.maxRisk >= profile.risk || (r.skin >= profile.skin && r.maxRisk >= profile.skinRisk);
+
+  // Her elementin son sınıflandırma sonucu; ayar değişince yeniden karar verebilmek için.
+  const results = new WeakMap();
+  const tracked = new Set();
+  function apply(el, result) {
+    if (!result) { markUnverified(el); return; }
+    results.set(el, result);
+    tracked.add(el);
+    isBad(result) ? markBad(el) : markOk(el);
+  }
+  function reevaluate() {
+    for (const el of tracked) {
+      if (!el.isConnected) { tracked.delete(el); badEls.delete(el); continue; }
+      const r = results.get(el);
+      if (r) isBad(r) ? markBad(el) : markOk(el);
+    }
+  }
   const sendOnce = (msg) => new Promise((resolve) => {
     try { chrome.runtime.sendMessage(msg, (r) => resolve(chrome.runtime.lastError ? null : r)); }
     catch (_) { resolve(null); }
@@ -36,10 +61,10 @@
 
   function applySettings(s) {
     enabled = s.enabled !== false;
-    threshold = THRESHOLDS[s.sensitivity] ?? THRESHOLDS.high;
+    profile = PROFILES[s.sensitivity] ?? PROFILES.high;
     showUnverified = s.unverified === 'show';
     document.documentElement.classList.toggle('sv-off', !enabled);
-    if (enabled) rescanAll();
+    if (enabled) { rescanAll(); reevaluate(); }
   }
   chrome.storage.sync.get(['enabled', 'sensitivity', 'unverified'], applySettings);
   chrome.storage.onChanged.addListener((_c, area) => {
@@ -70,7 +95,7 @@
   }
 
   function drawToDataUrl(source, w, h) {
-    const scale = Math.min(1, 299 / Math.max(w, h));
+    const scale = Math.min(1, 448 / Math.max(w, h));
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(w * scale));
     c.height = Math.max(1, Math.round(h * scale));
@@ -78,8 +103,8 @@
     return c.toDataURL('image/jpeg', 0.85); // kirli (tainted) canvas'ta SecurityError fırlatır
   }
 
-  // Bir URL'nin riskini hesaplar. Başarısızsa null (= bulanık kalır).
-  async function riskForUrl(url, imgEl) {
+  // Bir URL'nin sınıflandırma sonucunu döndürür. Başarısızsa null (= bulanık kalır).
+  async function resultForUrl(url, imgEl) {
     if (urlResults.has(url)) return urlResults.get(url);
     let res = null;
     const isHttp = /^https?:/i.test(url);
@@ -104,9 +129,9 @@
       } catch (_) { /* doğrulanamadı */ }
     }
     if (!res || !res.ok) return null;
-    const risk = res.skip ? 0 : riskOf(res.scores);
-    urlResults.set(url, risk);
-    return risk;
+    const result = res.skip ? { maxRisk: 0, fullRisk: 0, skin: 0 } : res.result;
+    urlResults.set(url, result);
+    return result;
   }
 
   // ---- <img> ----
@@ -124,10 +149,9 @@
     const r = img.getBoundingClientRect();
     if (Math.max(img.naturalWidth, r.width) < MIN_SIZE && Math.max(img.naturalHeight, r.height) < MIN_SIZE) { markOk(img); return; }
     enqueue(async () => {
-      const risk = await riskForUrl(url, img);
+      const result = await resultForUrl(url, img);
       if ((img.currentSrc || img.src) !== url) return; // bu arada kaynak değişti
-      if (risk === null) { markUnverified(img); return; }
-      risk >= threshold ? markBad(img) : markOk(img);
+      apply(img, result);
     });
   }
 
@@ -146,9 +170,7 @@
     el.setAttribute('data-sv-bg', '');
     el.removeAttribute('data-sv-ok');
     enqueue(async () => {
-      const risk = await riskForUrl(url, null);
-      if (risk === null) { markUnverified(el); return; }
-      risk >= threshold ? markBad(el) : markOk(el);
+      apply(el, await resultForUrl(url, null));
     });
   }
 
@@ -163,13 +185,13 @@
         if (r.width < MIN_SIZE && r.height < MIN_SIZE) { markOk(v); return; }
         let dataUrl;
         try { dataUrl = drawToDataUrl(v, v.videoWidth, v.videoHeight); } catch (_) { markUnverified(v); return; }
-        const res = await send({ type: 'classify-data', dataUrl });
-        if (res && res.ok) riskOf(res.scores) >= threshold ? markBad(v) : markOk(v);
+        const res = await send({ type: 'classify-data', dataUrl, fast: true });
+        if (res && res.ok) apply(v, res.result);
       } else if (v.readyState >= 2 && v.paused && v.videoWidth && !v.hasAttribute('data-sv-ok') && !v.hasAttribute('data-sv-bad')) {
         // durdurulmuş ama kare hazır: bir kez tara (poster/ilk kare)
         try {
           const res = await send({ type: 'classify-data', dataUrl: drawToDataUrl(v, v.videoWidth, v.videoHeight) });
-          if (res && res.ok) riskOf(res.scores) >= threshold ? markBad(v) : markOk(v);
+          if (res && res.ok) apply(v, res.result);
         } catch (_) { /* doğrulanamadı */ }
       }
     };

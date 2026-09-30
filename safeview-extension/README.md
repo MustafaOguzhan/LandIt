@@ -15,9 +15,11 @@ Eklenti ikonundan filtreyi açıp kapatabilir ve hassasiyeti değiştirebilirsin
 ## Nasıl çalışır
 - **Güvenli varsayılan:** her görsel önce bulanıktır; yalnızca model "güvenli" derse açılır.
   Model çalışmazsa veya görsel doğrulanamazsa (ör. bazı çapraz-kaynak videolar) bulanık kalır.
-- Model: NSFWJS (MobileNetV2), eklentinin içinde paketli, WebGL ile yerel çalışır.
-  `Porn + Hentai + Sexy` olasılık toplamı eşiği aşarsa bulanıklaştırılır
-  (Yüksek ≥ %25, Orta ≥ %45, Düşük ≥ %65).
+- Model: NSFWJS (MobileNetV2), eklentinin içinde paketli, WebGL ile yerel çalışır (olmazsa işlemciye düşer).
+  Her görsel tek parça yerine parçalara bölünüp (çeyrekler/kırpmalar) ayrı ayrı taranır, en riskli parça sayılır.
+  Ek sinyal olarak ten tonlu piksel oranı da ölçülür.
+  Hassasiyet: **Yüksek** = risk ≥ %3 veya (ten ≥ %35 ve risk ≥ %0,8); **Orta** = risk ≥ %15 veya (ten ≥ %55 ve risk ≥ %4);
+  **Düşük** = risk ≥ %50. Ayar değişince açık sayfadaki görseller de anında yeniden değerlendirilir.
 - Kapsam: `<img>`, CSS arka plan görselleri, `<video>` (her ~0,6 sn'de bir kare örneklenir).
 
 ## Bilinen sınırlar (dürüstçe)

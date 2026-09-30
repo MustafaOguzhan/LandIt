@@ -44,13 +44,68 @@ function loadImage(src) {
   });
 }
 
+const riskOf = (s) => (s.Porn || 0) + (s.Hentai || 0) + (s.Sexy || 0);
+
+function cropToCanvas(img, sx, sy, sw, sh) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 224;
+  c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, 224, 224);
+  return c;
+}
+
+// Görselin hangi parçalarının ayrı ayrı taranacağı. Model her girdiyi 224x224'e
+// sıkıştırdığı için küçük bir bölgedeki içerik tam görselde kaybolabiliyor.
+function tilesFor(img, fast) {
+  const w = img.naturalWidth, h = img.naturalHeight, m = Math.min(w, h);
+  const tiles = [{ el: img }]; // tam görsel (sıkıştırılmış)
+  const ratio = Math.max(w, h) / m;
+  if (fast) { // video: tam kare + merkez
+    tiles.push({ el: cropToCanvas(img, (w - m) / 2, (h - m) / 2, m, m) });
+    return tiles;
+  }
+  if (ratio > 1.25) { // yatay/dikey görsel: uzun kenar boyunca 3 kare
+    for (const f of [0, 0.5, 1]) {
+      tiles.push({ el: cropToCanvas(img, f * (w - m), f * (h - m), m, m) });
+    }
+  } else { // kareye yakın: 4 çeyrek + merkez yarım
+    const hw = w / 2, hh = h / 2;
+    for (const [x, y] of [[0, 0], [hw, 0], [0, hh], [hw, hh]]) tiles.push({ el: cropToCanvas(img, x, y, hw, hh) });
+    tiles.push({ el: cropToCanvas(img, w / 4, h / 4, hw, hh) });
+  }
+  return tiles;
+}
+
+// Ten tonlu piksellerin oranı (YCbCr kuralı) - kaba ama hızlı bir ek sinyal.
+function skinRatio(img) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, 64, 64);
+  const d = ctx.getImageData(0, 0, 64, 64).data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+    const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+    if (cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173 && r > 60 && r > b) n++;
+  }
+  return n / (64 * 64);
+}
+
 let chain = Promise.resolve();
-async function classify(dataUrl) {
+async function classify(dataUrl, fast) {
   const [model, img] = await Promise.all([getModel(), loadImage(dataUrl)]);
-  const preds = await model.classify(img, 5);
-  const scores = {};
-  for (const p of preds) scores[p.className] = p.probability;
-  return scores;
+  let maxRisk = 0, fullRisk = 0;
+  const tiles = tilesFor(img, fast);
+  for (let i = 0; i < tiles.length; i++) {
+    const preds = await model.classify(tiles[i].el, 5);
+    const sc = {};
+    for (const p of preds) sc[p.className] = p.probability;
+    const r = riskOf(sc);
+    if (i === 0) fullRisk = r;
+    if (r > maxRisk) maxRisk = r;
+  }
+  return { maxRisk, fullRisk, skin: skinRatio(img) };
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -58,8 +113,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'status') { sendResponse({ ok: true, ...status }); return; }
   if (msg.type !== 'classify') return;
   chain = chain
-    .then(() => classify(msg.dataUrl))
-    .then((scores) => sendResponse({ ok: true, scores }))
+    .then(() => classify(msg.dataUrl, !!msg.fast))
+    .then((result) => sendResponse({ ok: true, result }))
     .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
   return true;
 });

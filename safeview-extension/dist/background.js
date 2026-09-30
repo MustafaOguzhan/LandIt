@@ -37,9 +37,9 @@ async function sendToOffscreen(msg, isDone) {
   throw lastErr;
 }
 
-async function classifyDataUrl(dataUrl) {
-  const res = await sendToOffscreen({ type: 'classify', dataUrl }, (r) => r.ok);
-  return res.scores;
+async function classifyDataUrl(dataUrl, fast) {
+  const res = await sendToOffscreen({ type: 'classify', dataUrl, fast }, (r) => r.ok);
+  return res.result;
 }
 
 function bytesToBase64(bytes) {
@@ -54,7 +54,7 @@ async function urlToSmallDataUrl(url) {
   const blob = await resp.blob();
   if (blob.type === 'image/svg+xml') return null;
   const bmp = await createImageBitmap(blob);
-  const scale = Math.min(1, 299 / Math.max(bmp.width, bmp.height));
+  const scale = Math.min(1, 448 / Math.max(bmp.width, bmp.height));
   const w = Math.max(1, Math.round(bmp.width * scale));
   const h = Math.max(1, Math.round(bmp.height * scale));
   const canvas = new OffscreenCanvas(w, h);
@@ -69,7 +69,7 @@ function classifyUrl(url) {
   const p = (async () => {
     const dataUrl = await urlToSmallDataUrl(url);
     if (!dataUrl) return { skip: true };
-    return { scores: await classifyDataUrl(dataUrl) };
+    return { result: await classifyDataUrl(dataUrl) };
   })();
   if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value);
   cache.set(url, p);
@@ -85,7 +85,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       else if (msg.type === 'status') {
         sendResponse(await sendToOffscreen({ type: 'status' }, (r) => r.ok));
       }
-      else if (msg.type === 'classify-data') sendResponse({ ok: true, scores: await classifyDataUrl(msg.dataUrl) });
+      else if (msg.type === 'classify-data') sendResponse({ ok: true, result: await classifyDataUrl(msg.dataUrl, !!msg.fast) });
       else sendResponse({ ok: false, error: 'unknown type' });
     } catch (e) {
       sendResponse({ ok: false, error: String((e && e.message) || e) });
