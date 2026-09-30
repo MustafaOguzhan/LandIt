@@ -77,6 +77,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     try {
       if (msg.type === 'classify-url') sendResponse({ ok: true, ...(await classifyUrl(msg.url)) });
+      else if (msg.type === 'status') {
+        await ensureOffscreen();
+        sendResponse(await chrome.runtime.sendMessage({ target: 'offscreen', type: 'status' }));
+      }
       else if (msg.type === 'classify-data') sendResponse({ ok: true, scores: await classifyDataUrl(msg.dataUrl) });
       else sendResponse({ ok: false, error: 'unknown type' });
     } catch (e) {
@@ -87,7 +91,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const cur = await chrome.storage.sync.get(['enabled', 'sensitivity']);
-  await chrome.storage.sync.set({ enabled: cur.enabled ?? true, sensitivity: cur.sensitivity ?? 'high' });
+  const cur = await chrome.storage.sync.get(['enabled', 'sensitivity', 'unverified']);
+  await chrome.storage.sync.set({ enabled: cur.enabled ?? true, sensitivity: cur.sensitivity ?? 'high', unverified: cur.unverified ?? 'blur' });
   ensureOffscreen().catch(() => {});
 });

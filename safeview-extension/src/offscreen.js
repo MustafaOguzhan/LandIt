@@ -3,14 +3,33 @@ import { load } from 'nsfwjs/core';
 import { MobileNetV2MidModel } from 'nsfwjs/models/mobilenet_v2_mid';
 
 // Model dosyaları paketin içinde; hiçbir ağ çağrısı yok.
+const status = { state: 'loading', backend: null, error: null };
+
+async function loadOn(backend) {
+  await tf.setBackend(backend);
+  await tf.ready();
+  const model = await load('MobileNetV2Mid', { modelDefinitions: [MobileNetV2MidModel] });
+  // Isınma: gerçekten çalıştığını doğrula (bazı makinelerde WebGL yüklenir ama işlem yapamaz).
+  const c = document.createElement('canvas');
+  c.width = c.height = 224;
+  await model.classify(c, 5);
+  status.backend = backend;
+  return model;
+}
+
 let modelPromise = null;
 function getModel() {
   if (!modelPromise) {
     modelPromise = (async () => {
-      try { await tf.setBackend('webgl'); } catch (_) { await tf.setBackend('cpu'); }
-      await tf.ready();
-      return load('MobileNetV2Mid', { modelDefinitions: [MobileNetV2MidModel] });
-    })();
+      try {
+        try { return await loadOn('webgl'); }
+        catch (e) { console.warn('SafeView: webgl failed, falling back to cpu', e); return await loadOn('cpu'); }
+      } catch (e) {
+        status.state = 'error';
+        status.error = String((e && e.message) || e);
+        throw e;
+      }
+    })().then((m) => { status.state = 'ready'; status.error = null; return m; });
     modelPromise.catch(() => { modelPromise = null; });
   }
   return modelPromise;
@@ -35,7 +54,9 @@ async function classify(dataUrl) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (!msg || msg.target !== 'offscreen' || msg.type !== 'classify') return;
+  if (!msg || msg.target !== 'offscreen') return;
+  if (msg.type === 'status') { sendResponse({ ok: true, ...status }); return; }
+  if (msg.type !== 'classify') return;
   chain = chain
     .then(() => classify(msg.dataUrl))
     .then((scores) => sendResponse({ ok: true, scores }))

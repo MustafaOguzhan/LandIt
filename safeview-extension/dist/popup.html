@@ -14,13 +14,22 @@
     </label>
   </header>
   <p class="status" id="status">Yükleniyor…</p>
+  <p class="model" id="model"></p>
+
   <label class="field" for="sensitivity">Hassasiyet</label>
   <select id="sensitivity">
-    <option value="high">Yüksek (en çok bulanıklaştırır)</option>
+    <option value="high">Yüksek (en çok gizler)</option>
     <option value="medium">Orta</option>
     <option value="low">Düşük (sadece açık içerik)</option>
   </select>
-  <p class="note">Görüntüler cihazınızda taranır, hiçbir yere gönderilmez. Doğrulanamayan görseller güvenlik için bulanık kalır.</p>
+
+  <label class="field" for="unverified">Kontrol edilemeyen görseller</label>
+  <select id="unverified">
+    <option value="blur">Bulanık bırak (güvenli)</option>
+    <option value="show">Göster</option>
+  </select>
+
+  <p class="note">Görüntüler cihazınızda taranır, hiçbir yere gönderilmez.</p>
   <script src="popup.js"></script>
 </body>
 </html>

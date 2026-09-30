@@ -17,3 +17,6 @@ select:focus-visible, .switch input:focus-visible + .track { outline: 2px solid 
 .switch input:checked + .track::after { transform: translateX(18px); }
 .switch:active .track::after { transform: scale(.95); }
 .switch input:checked:active + .track::after { transform: translateX(18px) scale(.95); }
+.model { margin: -8px 0 14px; font-size: 12px; color: #6b7686; }
+.model.err { color: #E85A3B; }
+.field + select { margin-bottom: 12px; }
