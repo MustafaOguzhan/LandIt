@@ -17,9 +17,9 @@ export function getHuman(backend) {
         face: {
           enabled: true,
           detector: { rotation: false, maxDetected: 1, minConfidence: 0.3 },
-          mesh: { enabled: true },
+          mesh: { enabled: false },
           iris: { enabled: false },
-          description: { enabled: true },
+          description: { enabled: false },
           emotion: { enabled: false },
           antispoof: { enabled: false },
           liveness: { enabled: false },
@@ -86,7 +86,7 @@ function analyzePerson(res, cv) {
 
   const face = res.face && res.face[0];
   const ref = faceSkinRef(face, px, W, H);
-  const isMale = false; // Human'ın cinsiyet çıktısı bu görsellerde güvenilir değil (erkeğe 'female' dedi); kullanılmıyor
+  const isMale = false; // Human'ın cinsiyet modeli güvenilir çıkmadı ve kapatıldı; erkek/kadın ayrımı yapılmıyor
 
   const isSkin = (x, y) => {
     const xi = Math.round(x), yi = Math.round(y);
@@ -160,7 +160,6 @@ function analyzePerson(res, cv) {
     exposure: totalArea > 0 ? exposed / totalArea : 0,
     torso: agg(['torso']), arms: agg(['arm']), legs: agg(['leg']),
     regions: regions.length,
-    gender: face ? `${face.gender}:${(face.genderScore || 0).toFixed(2)}` : 'noface',
   };
 }
 

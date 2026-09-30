@@ -45,7 +45,7 @@ function loadImage(src) {
 }
 
 // ---- vücut analizi çerçevesi ----
-const BODY_BACKEND = 'cpu'; // deneme: 'cpu' | 'webgl'
+const BODY_BACKEND = 'webgl'; // Human kendi içinde başlatılamazsa cpu'ya düşer
 let frameReady = null;
 const pending = new Map();
 let seq = 0;
