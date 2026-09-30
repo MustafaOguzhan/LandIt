@@ -19,22 +19,27 @@ async function ensureOffscreen() {
   await creating;
 }
 
-async function classifyDataUrl(dataUrl) {
-  // Offscreen belge ilk açılışta hazır olmayabilir; birkaç kez yeniden dene.
+// Offscreen belge ilk açılışta hazır olmayabilir; birkaç kez yeniden dene.
+async function sendToOffscreen(msg, isDone) {
   let lastErr;
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
       await ensureOffscreen();
-      const res = await chrome.runtime.sendMessage({ target: 'offscreen', type: 'classify', dataUrl });
-      if (res && res.ok) return res.scores;
+      const res = await chrome.runtime.sendMessage({ target: 'offscreen', ...msg });
+      if (res && isDone(res)) return res;
       lastErr = new Error((res && res.error) || 'no response');
     } catch (e) {
       lastErr = e;
     }
     await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
   }
-  console.warn('SafeView classify failed:', lastErr);
+  console.warn('SafeView offscreen request failed:', lastErr);
   throw lastErr;
+}
+
+async function classifyDataUrl(dataUrl) {
+  const res = await sendToOffscreen({ type: 'classify', dataUrl }, (r) => r.ok);
+  return res.scores;
 }
 
 function bytesToBase64(bytes) {
@@ -78,8 +83,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     try {
       if (msg.type === 'classify-url') sendResponse({ ok: true, ...(await classifyUrl(msg.url)) });
       else if (msg.type === 'status') {
-        await ensureOffscreen();
-        sendResponse(await chrome.runtime.sendMessage({ target: 'offscreen', type: 'status' }));
+        sendResponse(await sendToOffscreen({ type: 'status' }, (r) => r.ok));
       }
       else if (msg.type === 'classify-data') sendResponse({ ok: true, scores: await classifyDataUrl(msg.dataUrl) });
       else sendResponse({ ok: false, error: 'unknown type' });
