@@ -1,0 +1,11 @@
+{
+  "searches": [
+    {
+      "name": "iPhone 13",
+      "url": "https://www.finn.no/recommerce/forsale/search?q=iphone+13",
+      "minDiscountPct": 25,
+      "minPrice": 500,
+      "maxPrice": null
+    }
+  ]
+}
